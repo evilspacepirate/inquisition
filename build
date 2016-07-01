@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -x
+
+gnatmake -g -gnat12 src/iq.adb -aO/usr/lib/x86_64-linux-gnu/ada/adalib/gtkada -aI/usr/share/ada/adainclude/gtkada/ -largs -lgtkada -lgtk-x11-2.0 -lglib-2.0 -lgobject-2.0
+
+mkdir bin
+mv iq bin
+
+rm *.o *.ali b~*
