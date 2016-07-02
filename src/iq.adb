@@ -79,7 +79,7 @@ begin
    Pack_Start(Status_Bar_Box, Connection_Config_Label, False, False, Status_Bar_Pad_Pixels);
    Pack_End(Status_Bar_Box, Protocol_Label, False, False, Status_Bar_Pad_Pixels);
 
-   Control_Panel.Create;
+   Control_Panel.Create(Main_Window);
    Add(Main_Panel_HPane, Control_Panel.View);
 
    Add(Main_Window_Box, Main_Panel_HPane);
