@@ -23,6 +23,8 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
+with Configuration; use Configuration;
+with Control_Panel;
 with Glib;          use Glib;
 with Glib.Object;   use Glib.Object;
 with Gtk;           use Gtk;
@@ -33,7 +35,6 @@ with Gtk.Handlers;  use Gtk.Handlers;
 with Gtk.Label;     use Gtk.Label;
 with Gtk.Paned;     use Gtk.Paned;
 with Gtk.Window;    use Gtk.Window;
-with Control_Panel;
 
 function Iq return Integer is
 
