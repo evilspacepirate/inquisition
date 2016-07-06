@@ -1194,7 +1194,7 @@ package body Configuration is
 
       while not End_Of_File(Config_File) loop
          declare
-            Line            : String  := Get_Line(Config_File);
+            Line : String  := Get_Line(Config_File);
          begin
             -- Is this a non-comment line? --
             if Line(Line'First) /= '#' then
