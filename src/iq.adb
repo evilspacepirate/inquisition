@@ -74,7 +74,7 @@ begin
    Set_Label(Connection_Config_Label, "Connection Configuration Placeholder");
    Set_Label(Protocol_Label, "Protocol Placeholder");
    Set_Label(Main_Window_Label, "Main Window Area");
-   
+
    Main_Window.Set_Default_Size(400, 400);
 
    Pack_Start(Status_Bar_Box, Connection_Config_Label, False, False, Status_Bar_Pad_Pixels);
@@ -88,7 +88,7 @@ begin
 
    Add(Main_Window, Main_Window_Box);
 
-   Set_Child_Packing(Main_Window_Box, 
+   Set_Child_Packing(Main_Window_Box,
                      Status_Bar_Box,
                      Expand    => false,
                      Fill      => false,

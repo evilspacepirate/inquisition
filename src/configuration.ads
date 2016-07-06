@@ -30,10 +30,9 @@ package Configuration is
    package UnStr renames Ada.Strings.Unbounded;
    package String_Vectors is new Indefinite_Vectors (Natural, UnStr.Unbounded_String);
    
+   Too_Many_File_Formats_Specified      : exception;
    Syntax_Error                         : exception;
    Parameter_Missing_Default_Set_Value  : exception;
-   Parameter_Missing_Read_Write_Mode    : exception;
-   Parameter_Missing_Friendly_Name      : exception;
    Parameter_Missing_UID                : exception;
    Parameter_Missing_Sampling_Period    : exception;
    Parameter_Missing_Is_Sampling        : exception;
@@ -43,7 +42,6 @@ package Configuration is
    Conversion_Failure_Is_Sampling       : exception;
    Conversion_Failure_Read_Write_Mode   : exception;
    Conversion_Failure_Sample_Period     : exception;
-   Conversion_Failure_Syntax_Error      : exception;
    Conversion_Failure_Stop_Bits         : exception;
    Conversion_Failure_Baud              : exception;
    Conversion_Failure_Device_Name       : exception;
@@ -59,7 +57,7 @@ package Configuration is
    type Datalink_Type is (None, TCP_IPv4, Serial, USB_HID);
    type Config_File_Format is (One, Undefined);
 
-   type Datalink_Configuration (Datalink : Datalink_Type) is record
+   type Datalink_Configuration (Datalink : Datalink_Type := None) is record
       case Datalink is
          when TCP_IPv4 =>
             Address_Octet_1 : Unsigned_8;
@@ -176,5 +174,13 @@ package Configuration is
    -- Reboot System  |       | 0xFF01 | W  | Default Set Value: 1                                                                                    --
    -- System Voltage | Volts | 0x0001 | R  | Sampling: True  | Sample Period: 100 ms                                                                 --
    -- Test Mode      |       | 0xFF00 | RW | Sampling: False | Sample Period:   1 s | Default Set Value: 1                                           --
+
+   function Get_Config_File_Format_From_File(File_Name : String) return Config_File_Format;
+
+   procedure Get_Config_From_File(File_Name            : in String;
+                                  Adaptable_Parameters : out Adaptable_Parameter_Record_Vectors.Vector;
+                                  Config               : out Datalink_Configuration;
+                                  Error_Text           : out UnStr.Unbounded_String;
+                                  Config_Valid         : out Boolean);
 
 end Configuration;

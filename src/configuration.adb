@@ -25,23 +25,27 @@ with Ada.Text_IO;                       use Ada.Text_io;
 with Ada.Strings.Fixed;                 use Ada.Strings.fixed;
 with Ada.Strings.Unbounded;
 with Ada.Directories;                   use Ada.Directories;
+with Ada.Exceptions;                    use Ada.Exceptions;
 with Interfaces;                        use Interfaces;
 
 package body Configuration is
    
    use Adaptable_Parameter_Record_Vectors;
 
-   Configuration_Type_Tag  : constant String    := "IQ_Config_Format";
-   Delimeter_Symbol        : constant Character := '|';
-   Tab_Character           : constant Character := Character'Val(9);
+   Delimeter_Symbol          : constant Character := '|';
 
-   Serial_Datalink_Tag     : constant String    := "Datalink Serial";
-   TCP_IPv4_Datalink_Tag   : constant String    := "Datalink TCPv4";
-   USB_HID_Datalink_Tag    : constant String    := "Datalink USBHID";
+   Tab_Character             : constant Character := Character'Val(9);
+   Line_Feed_Character       : constant Character := Character'Val(10);
+   Carriage_Return_Character : constant Character := Character'Val(13);
+   CRLF                      : constant String    := Carriage_Return_Character & Line_Feed_Character;
 
-   Sampling_Tag            : constant String    := "Sampling:";
-   Sample_Period_Tag       : constant String    := "Sample Period:";
-   Default_Set_Value_Tag   : constant String    := "Default Set Value:";
+   Serial_Datalink_Tag       : constant String    := "Datalink Serial";
+   TCP_IPv4_Datalink_Tag     : constant String    := "Datalink TCPv4";
+   USB_HID_Datalink_Tag      : constant String    := "Datalink USBHID";
+   Configuration_Type_Tag    : constant String    := "IQ_Config_Format";
+   Sampling_Tag              : constant String    := "Sampling:";
+   Sample_Period_Tag         : constant String    := "Sample Period:";
+   Default_Set_Value_Tag     : constant String    := "Default Set Value:";
 
    ------------------------------
    -- DUMP_ADAPTABLE_PARAMETER --
@@ -989,6 +993,8 @@ package body Configuration is
                           Is_Sampling_Defined   := True;
                        end if;
                     exception
+                       when Conversion_Failure =>
+                          raise Conversion_Failure_Is_Sampling;
                        when others =>
                           null;
                     end;
@@ -998,6 +1004,8 @@ package body Configuration is
                           Sampling_Period_Defined := True;
                        end if;
                     exception
+                       when Constraint_Error =>
+                          raise Conversion_Failure_Sample_Period;
                        when others =>
                           null;
                     end;
@@ -1054,10 +1062,17 @@ package body Configuration is
                  begin
                     begin
                        if Token(Token'First .. Token'First + Sampling_Tag'Length - 1) = Sampling_Tag then
-                          Parameter.Is_Sampling := Boolean'Value(Token(Token'First + Sampling_Tag'Length .. Token'Last));
+                          begin
+                             Parameter.Is_Sampling := Boolean'Value(Token(Token'First + Sampling_Tag'Length .. Token'Last));
+                          exception
+                             when Constraint_Error =>
+                                raise Conversion_Failure_Is_Sampling;
+                          end;
                           Is_Sampling_Defined   := True;
                        end if;
                     exception
+                       when Constraint_Error =>
+                          raise Syntax_Error;
                        when others =>
                           null;
                     end;
@@ -1067,6 +1082,8 @@ package body Configuration is
                           Sampling_Period_Defined := True;
                        end if;
                     exception
+                       when Constraint_Error =>
+                          raise Conversion_Failure_Sample_Period;
                        when others =>
                           null;
                     end;
@@ -1076,6 +1093,8 @@ package body Configuration is
                           Default_Set_Value_Defined   := True;
                        end if;
                     exception
+                       when Conversion_Failure =>
+                          raise Conversion_Failure_Default_Set_Value;
                        when others =>
                           null;
                     end;
@@ -1102,5 +1121,203 @@ package body Configuration is
       Parameter_Valid := True;
 
    end String_To_Adaptable_Parameter;
+
+   --------------------------------------
+   -- GET_CONFIG_FILE_FORMAT_FROM_FILE --
+   --------------------------------------
+
+   function Get_Config_File_Format_From_File(File_Name : String) return Config_File_Format is
+      Config_File : File_Type;
+      File_Format : Config_File_Format := Undefined;
+   begin
+      Open(Config_File, In_File, File_Name);
+
+      while not End_Of_File(Config_File) loop
+         declare
+            Line                     : String := Get_Line(Config_File);
+            Current_Line_File_Format : Config_File_Format;
+         begin
+            -- Is this a non-comment line? --
+            if Line(Line'First) /= '#' then
+               Current_Line_File_Format := Get_Config_File_Format_From_String(Line);
+
+               case Current_Line_File_Format is
+                  when One =>
+                     if File_Format = Undefined then
+                        File_Format := One;
+                     else
+                        Close(Config_File);
+                        raise Too_Many_File_Formats_Specified;
+                     end if;
+                  when Undefined =>
+                     null;
+               end case;
+            end if;
+         exception
+            when Constraint_Error =>
+               null;
+         end;
+      end loop;
+      Close(Config_File);
+      return File_Format;
+   end Get_Config_File_Format_From_File;
+
+   --------------------------
+   -- GET_CONFIG_FROM_FILE --
+   --------------------------
+
+   procedure Get_Config_From_File(File_Name            : in String;
+                                  Adaptable_Parameters : out Adaptable_Parameter_Record_Vectors.Vector;
+                                  Config               : out Datalink_Configuration;
+                                  Error_Text           : out UnStr.Unbounded_String;
+                                  Config_Valid         : out Boolean) is
+      Config_File     : File_Type;
+      File_Format     : Config_File_Format;
+      Line_Number     : Natural := 1;
+      Config_Defined  : Boolean := False;
+   begin
+
+      Config_Valid := False;
+
+      -- Identify configuration file format --
+
+      File_Format := Get_Config_File_Format_From_File(File_Name);
+
+      if File_Format = Undefined then
+         Error_Text := UnStr.To_Unbounded_String("Error: No configuration file format defined. Add 'IQ_Config_Format 1' to config file.");
+         return;
+      end if;
+
+      -- Parse configuration data from file --
+
+      Open(Config_File, In_File, File_Name);
+
+      while not End_Of_File(Config_File) loop
+         declare
+            Line            : String  := Get_Line(Config_File);
+         begin
+            -- Is this a non-comment line? --
+            if Line(Line'First) /= '#' then
+
+               -- Parse line as a datalink configuration line --
+               declare
+                  Line_Config : Datalink_Configuration := Get_Datalink_Config_From_String(Line);
+               begin
+                  -- Only one datalink configuration declaration per         --
+                  -- configuration file is allowed. If two or more are found --
+                  -- generate an error.                                      --
+                  if Line_Config.Datalink /= None then
+                     if Config_Defined then
+                        Close(Config_File);
+                        Config_Valid := False;
+                        UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: More than one Datalink declaration specified for configuration file: " & File_Name & CRLF));
+                        UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Second declaration found on line:" & Natural'image(Line_Number) & CRLF));
+                        return;
+                     else
+                        -- Valid datalink configuration found --
+                        Config         := Line_Config;
+                        Config_Defined := True;
+                        Config_Valid   := True;
+                        goto Next_Line;
+                     end if;
+                  end if;
+               exception
+                  when Syntax_Error =>
+                     Close(Config_File);
+                     Config_Valid := False;
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Syntax error: Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     return;
+                  when Conversion_Failure =>
+                     Close(Config_File);
+                     Config_Valid := False;
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     return;
+                  when Conversion_Failure_Stop_Bits =>
+                     Close(Config_File);
+                     Config_Valid := False;
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for Stop Bits on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     return;
+                  when Conversion_Failure_Baud =>
+                     Close(Config_File);
+                     Config_Valid := False;
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for Baud Rate on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     return;
+                  when Conversion_Failure_Device_Name =>
+                     Close(Config_File);
+                     Config_Valid := False;
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for Device Name on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     return;
+                  when Conversion_Failure_Parity =>
+                     Close(Config_File);
+                     Config_Valid := False;
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for Parity on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     return;
+                  when Conversion_Failure_IPv4_Address =>
+                     Close(Config_File);
+                     Config_Valid := False;
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for IPv4 Address on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     return;
+                  when Conversion_Failure_TCP_Port =>
+                     Close(Config_File);
+                     Config_Valid := False;
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for TCP Port on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     return;
+                  when Conversion_Failure_Vendor_ID =>
+                     Close(Config_File);
+                     Config_Valid := False;
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for USB Vendor ID on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     return;
+                  when Conversion_Failure_Product_ID =>
+                     Close(Config_File);
+                     Config_Valid := False;
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for USB Product ID on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+               end;
+
+               -- Parse line as a adaptable parameter record declaration --
+               declare
+                  Parameter       : Adaptable_Parameter_Record;
+                  Parameter_Valid : Boolean;
+               begin
+                  String_To_Adaptable_Parameter(Line, Parameter, Parameter_Valid);
+
+                  if Parameter_Valid then
+                     Adaptable_Parameters.Append(Parameter);
+                  end if;
+
+               exception
+                  when Syntax_Error =>
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Adaptable parameter declaration syntax error. Parameter not added to control panel." & CRLF));
+                  when Parameter_Missing_Default_Set_Value =>
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Writable adaptable parameter declaration missing '" & Default_Set_Value_Tag & "' field. Parameter not added to control panel." & CRLF));
+                  when Parameter_Missing_UID =>
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Adaptable parameter declaration missing 'UID' field. Parameter not added to control panel." & CRLF));
+                  when Parameter_Missing_Sampling_Period =>
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Readable adaptable parameter declaration missing '" & Sample_Period_Tag & "' field. Parameter not added to control panel." & CRLF));
+                  when Parameter_Missing_Is_Sampling =>
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Readable adaptable parameter declaration missing '" & Sampling_Tag & "' field. Parameter not added to control panel." & CRLF));
+                  when Conversion_Failure_Is_Sampling =>
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Invalid value for '" & Sampling_Tag & "' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
+                  when Conversion_Failure_Read_Write_Mode =>
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Invalid value for 'Read/Write Mode' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
+                  when Conversion_Failure_Sample_Period =>
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Invalid value for '" & Sample_Period_Tag & "' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
+                  when Conversion_Failure_UID =>
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Invalid value for 'UID' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
+                  when Conversion_Failure_Default_Set_Value =>
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Invalid value for '" & Default_Set_Value_Tag & "' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
+               end;
+            end if;
+         exception
+            when Constraint_Error =>
+               null;
+         end;
+      <<Next_Line>>
+         Line_Number := Line_Number + 1;
+      end loop;
+      Close(Config_File);
+   exception
+      when Too_Many_File_Formats_Specified =>
+         Error_Text := UnStr.To_Unbounded_String("Error: More than one IQ_Config_Format declaration specified for configuration file: " & File_Name);
+   end Get_Config_From_File;
 
 end Configuration;
