@@ -105,8 +105,8 @@ package body Configuration is
                    UnStr.To_String(Config.Device_Name);
          when USB_HID =>
             return "Data Link:  USB HID  " &
-                   "Vendor ID: 0x" & To_Hex_String(Config.Vendor_ID) &
-                   " Product ID: " & To_Hex_String(Config.Product_ID);
+                   "VID:  0x" & To_Hex_String(Config.Vendor_ID) &
+                   "  PID:  0x" & To_Hex_String(Config.Product_ID);
          when None =>
             return "Data Link:  Not Configured";
       end case;
