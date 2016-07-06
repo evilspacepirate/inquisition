@@ -60,7 +60,7 @@ package body Configuration is
       put_line("Is_Sampling       : " & Boolean'image(Parameter.Is_Sampling));
       put_line("Is_Readable       : " & Boolean'image(Parameter.Is_Readable));
       put_line("Is_Writable       : " & Boolean'image(Parameter.Is_Writable));
-      put_line("Sample_Period     : " & Duration'image(Parameter.Sample_Period));
+      put_line("Sample_Period     : " & UnStr.To_String(Parameter.Sample_Period));
    end Dump_Adaptable_Parameter;
 
    ---------------------------------
@@ -263,8 +263,7 @@ package body Configuration is
 
       case Units is
          when Not_Specified =>
-            -- Seconds Unit Type is Default --
-            return Duration'Value(Stripped_Text(Stripped_Text'First .. Stripped_Text'Last));
+            raise Conversion_Failure_Sample_Period;
          when Seconds =>
             return Duration'Value(Stripped_Text(Stripped_Text'First .. Stripped_Text'Last - 1));
          when Milliseconds =>
@@ -998,16 +997,19 @@ package body Configuration is
                        when others =>
                           null;
                     end;
+                    declare
+                       Period : Duration;
                     begin
                        if Token(Token'First .. Token'First + Sample_Period_Tag'Length - 1) = Sample_Period_Tag then
-                          Parameter.Sample_Period := String_To_Duration(Token(Token'First + Sample_Period_Tag'Length .. Token'Last));
+                          -- Convert the string to a duration to validate that --
+                          -- the string is convertable to a duration.          --
+                          Period                  := String_To_Duration(Token(Token'First + Sample_Period_Tag'Length .. Token'Last));
+                          Parameter.Sample_Period := UnStr.To_Unbounded_String(Token(Token'First + Sample_Period_Tag'Length .. Token'Last));
                           Sampling_Period_Defined := True;
                        end if;
                     exception
                        when Constraint_Error =>
                           raise Conversion_Failure_Sample_Period;
-                       when others =>
-                          null;
                     end;
                  end;
               end loop;
@@ -1076,16 +1078,19 @@ package body Configuration is
                        when others =>
                           null;
                     end;
+                    declare
+                       Period : Duration;
                     begin
                        if Token(Token'First .. Token'First + Sample_Period_Tag'Length - 1) = Sample_Period_Tag then
-                          Parameter.Sample_Period := String_To_Duration(Token(Token'First + Sample_Period_Tag'Length .. Token'Last));
+                          -- Convert the string to a duration to validate that --
+                          -- the string is convertable to a duration.          --
+                          Period                  := String_To_Duration(Token(Token'First + Sample_Period_Tag'Length .. Token'Last));
+                          Parameter.Sample_Period := UnStr.To_Unbounded_String(Token(Token'First + Sample_Period_Tag'Length .. Token'Last));
                           Sampling_Period_Defined := True;
                        end if;
                     exception
                        when Constraint_Error =>
                           raise Conversion_Failure_Sample_Period;
-                       when others =>
-                          null;
                     end;
                     begin
                        if Token(Token'First .. Token'First + Default_Set_Value_Tag'Length - 1) = Default_Set_Value_Tag then

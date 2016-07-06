@@ -86,7 +86,7 @@ package Configuration is
       Is_Sampling         : Boolean;
       Is_Readable         : Boolean;
       Is_Writable         : Boolean;
-      Sample_Period       : Duration;
+      Sample_Period       : UnStr.Unbounded_String;
    end record;
    
    package Adaptable_Parameter_Record_Vectors is new Indefinite_Vectors (Natural, Adaptable_Parameter_Record);

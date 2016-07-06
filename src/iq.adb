@@ -23,6 +23,7 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
+with Ada.Text_IO;   use Ada.Text_IO;
 with Configuration; use Configuration;
 with Control_Panel;
 with Glib;          use Glib;
@@ -38,6 +39,8 @@ with Gtk.Window;    use Gtk.Window;
 
 function Iq return Integer is
 
+   use Adaptable_Parameter_Record_Vectors;
+
    package Basic_Callback is new Gtk.Handlers.Callback(GObject_Record);
 
    Status_Bar_Pad_Pixels   : constant := 7;
@@ -50,6 +53,11 @@ function Iq return Integer is
    Connection_Config_Label : Gtk_Label;
    Protocol_Label          : Gtk_Label;
 
+   Adaptable_Parameters    : Adaptable_Parameter_Record_Vectors.Vector;
+   Config                  : Datalink_Configuration;
+   Config_Errors           : UnStr.Unbounded_String;
+   Config_Valid            : Boolean;
+
    ---------------------
    -- ON_MAIN_DESTROY --
    ---------------------
@@ -60,6 +68,36 @@ function Iq return Integer is
    end On_Main_Destroy;
 
 begin
+
+   -- Search for an inquisition configuration file in the current working --
+   -- directory and load configuration data from it. If there are more    --
+   -- than one .iq files in the local directory or none, no configuration --
+   -- files will be loaded.                                               --
+   declare
+      Config_File_Name : String := Get_Configuration_File_Name;
+   begin
+
+      if Config_File_Name = "" then
+         Put_Line("iq: Error: No configuration file found in the current directory");
+         return 1;
+      end if;
+
+      Get_Config_From_File(Config_File_Name,
+                           Adaptable_Parameters,
+                           Config,
+                           Config_Errors,
+                           Config_Valid);
+
+      if UnStr.Length(Config_Errors) /= 0 then
+         Put_Line("iq: Errors found in processing configuration file: " & Config_File_Name);
+         Put_Line(Unstr.To_String(Config_Errors));
+      end if;
+
+      if not Config_Valid then
+         Put_Line("Invalid datalink configuration. Aborting.");
+         return 2;
+      end if;
+   end;
 
    Gtk.Main.Init;
 
@@ -80,7 +118,7 @@ begin
    Pack_Start(Status_Bar_Box, Connection_Config_Label, False, False, Status_Bar_Pad_Pixels);
    Pack_End(Status_Bar_Box, Protocol_Label, False, False, Status_Bar_Pad_Pixels);
 
-   Control_Panel.Create(Main_Window);
+   Control_Panel.Create(Main_Window, Adaptable_Parameters);
    Add(Main_Panel_HPane, Control_Panel.View);
 
    Add(Main_Window_Box, Main_Panel_HPane);

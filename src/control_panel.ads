@@ -20,6 +20,7 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
+with Configuration; use Configuration;
 with Glib.Object;   use Glib.Object;
 with Glib.Values;   use Glib.Values;
 with Gtk.Tree_View; use Gtk.Tree_View;
@@ -29,7 +30,8 @@ package Control_Panel is
 
    View : Gtk_Tree_View;
 
-   procedure Create(Main_Window : in out Gtk_Window);
+   procedure Create(Main_Window : in out Gtk_Window;
+                    Parameters  : in Adaptable_Parameter_Record_Vectors.Vector);
    -- Builds up the control panel treeview widget --
 
    private
