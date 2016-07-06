@@ -29,7 +29,9 @@ with Ada.Exceptions;                    use Ada.Exceptions;
 with Interfaces;                        use Interfaces;
 
 package body Configuration is
-   
+
+   package Unsigned_8_IO is new Modular_IO(Unsigned_8);
+
    use Adaptable_Parameter_Record_Vectors;
 
    Delimeter_Symbol          : constant Character := '|';
@@ -39,13 +41,76 @@ package body Configuration is
    Carriage_Return_Character : constant Character := Character'Val(13);
    CRLF                      : constant String    := Carriage_Return_Character & Line_Feed_Character;
 
-   Serial_Datalink_Tag       : constant String    := "Datalink Serial";
-   TCP_IPv4_Datalink_Tag     : constant String    := "Datalink TCPv4";
-   USB_HID_Datalink_Tag      : constant String    := "Datalink USBHID";
+   Serial_Datalink_Tag       : constant String    := "Data_link Serial";
+   TCP_IPv4_Datalink_Tag     : constant String    := "Data_link TCPv4";
+   USB_HID_Datalink_Tag      : constant String    := "Data_link USBHID";
    Configuration_Type_Tag    : constant String    := "IQ_Config_Format";
    Sampling_Tag              : constant String    := "Sampling:";
    Sample_Period_Tag         : constant String    := "Sample Period:";
    Default_Set_Value_Tag     : constant String    := "Default Set Value:";
+
+   -------------------
+   -- TO_HEX_STRING --
+   -------------------
+
+   function To_Hex_String(Input : Unsigned_8) return String is
+      Hex    : String(1 .. 6);
+      Output : String(1 .. 2);
+      Start  : Integer;
+      Length : Integer;
+   begin
+      Unsigned_8_IO.put(To => Hex, Item => Input, Base => 16);
+      for Index in 1 .. 6 loop
+         if Hex(Index) = '#' then
+            Start := Index + 1;
+            exit;
+         end if;
+      end loop;
+      Output := "00";
+      Length := 6 - Start;
+      Output(3 - Length .. 2) := Hex(6 - Length .. 5);
+      return Output;
+   end To_Hex_String;
+
+   -------------------
+   -- TO_HEX_STRING --
+   -------------------
+
+   function To_Hex_String(Input : Unsigned_16) return String is
+     High_Byte : Unsigned_8 := Unsigned_8(Shift_Right(Input, 8));
+     Low_Byte  : Unsigned_8 := Unsigned_8(Input and 16#FF#);
+   begin
+     return To_Hex_String(High_Byte) & To_Hex_String(Low_Byte);
+   end To_Hex_String;
+
+   --------------------------------------
+   -- DATALINK_CONFIGURATION_TO_STRING --
+   --------------------------------------
+
+   function Datalink_Configuration_To_String(Config : Datalink_Configuration) return String is
+   begin
+      case Config.Datalink is
+         when TCP_IPv4 =>
+            return "Data Link:  TCP  " &
+                   Trim_Outside_Whitespace(Unsigned_8'image(Config.Address_Octet_1)) & "." &
+                   Trim_Outside_Whitespace(Unsigned_8'image(Config.Address_Octet_2)) & "." &
+                   Trim_Outside_Whitespace(Unsigned_8'image(Config.Address_Octet_3)) & "." &
+                   Trim_Outside_Whitespace(Unsigned_8'image(Config.Address_Octet_4)) & " : " &
+                   Trim_Outside_Whitespace(Unsigned_16'image(Config.Port));
+         when Serial =>
+            return "Data Link:  Serial  " &
+                   Trim_Outside_Whitespace(Natural'image(Config.Baud_Rate)) & " 8," &
+                   Parity_Type'image(Config.Parity) & "," &
+                   Stop_Bits_Type'image(Config.Stop_Bits) & "  " &
+                   UnStr.To_String(Config.Device_Name);
+         when USB_HID =>
+            return "Data Link:  USB HID  " &
+                   "Vendor ID: 0x" & To_Hex_String(Config.Vendor_ID) &
+                   " Product ID: " & To_Hex_String(Config.Product_ID);
+         when None =>
+            return "Data Link:  Not Configured";
+      end case;
+   end Datalink_Configuration_To_String;
 
    ------------------------------
    -- DUMP_ADAPTABLE_PARAMETER --

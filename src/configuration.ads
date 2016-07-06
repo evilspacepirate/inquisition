@@ -88,8 +88,10 @@ package Configuration is
       Is_Writable         : Boolean;
       Sample_Period       : UnStr.Unbounded_String;
    end record;
-   
+
    package Adaptable_Parameter_Record_Vectors is new Indefinite_Vectors (Natural, Adaptable_Parameter_Record);
+
+   function Datalink_Configuration_To_String(Config : Datalink_Configuration) return String;
 
    procedure Dump_Adaptable_Parameter(Parameter : Adaptable_Parameter_Record);
    
@@ -182,5 +184,9 @@ package Configuration is
                                   Config               : out Datalink_Configuration;
                                   Error_Text           : out UnStr.Unbounded_String;
                                   Config_Valid         : out Boolean);
+
+   function To_Hex_String(Input : Unsigned_8) return String;
+
+   function To_Hex_String(Input : Unsigned_16) return String;
 
 end Configuration;

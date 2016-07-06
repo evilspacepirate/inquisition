@@ -26,6 +26,7 @@
 with Ada.Text_IO;   use Ada.Text_IO;
 with Configuration; use Configuration;
 with Control_Panel;
+with Interfaces;    use Interfaces;
 with Glib;          use Glib;
 with Glib.Object;   use Glib.Object;
 with Gtk;           use Gtk;
@@ -109,7 +110,7 @@ begin
    Gtk_New(Connection_Config_Label);
    Gtk_New(Protocol_Label);
 
-   Set_Label(Connection_Config_Label, "Connection Configuration Placeholder");
+   Set_Label(Connection_Config_Label, Datalink_Configuration_To_String(Config));
    Set_Label(Protocol_Label, "Protocol Placeholder");
    Set_Label(Main_Window_Label, "Main Window Area");
 
