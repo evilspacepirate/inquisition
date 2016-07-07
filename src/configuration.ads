@@ -77,7 +77,7 @@ package Configuration is
             null;
       end case;
    end record;
-   
+
    type Adaptable_Parameter_Record is record
       Friendly_Name       : UnStr.Unbounded_String;
       Units_Name          : UnStr.Unbounded_String;
@@ -89,12 +89,16 @@ package Configuration is
       Sample_Period       : UnStr.Unbounded_String;
    end record;
 
+   Line_Feed_Character       : constant Character := Character'Val(10);
+   Carriage_Return_Character : constant Character := Character'Val(13);
+   CRLF                      : constant String    := Carriage_Return_Character & Line_Feed_Character;
+
    package Adaptable_Parameter_Record_Vectors is new Indefinite_Vectors (Natural, Adaptable_Parameter_Record);
 
    function Datalink_Configuration_To_String(Config : Datalink_Configuration) return String;
 
    procedure Dump_Adaptable_Parameter(Parameter : Adaptable_Parameter_Record);
-   
+
    function Get_Configuration_File_Name return String;
    -- Look in the current directory for files with names ending in ".iq". --
    -- If only one file exists that filename is returned.                   --
@@ -105,16 +109,16 @@ package Configuration is
    procedure Split_On_Delimeter(Text      : in String;
                                 Delimeter : in Character;
                                 Tokens    : out String_Vectors.Vector);
-   
+
    function Strip_Whitespace (Text : String) return String;
    -- Remove all tab and space characters from a string --
-   
+
    function String_To_Duration (Text : String) return Duration;
    -- Supports the following units: 
    --   Seconds      (s)
    --   Milliseconds (ms)
    --   Microseconds (us)
-   
+
    procedure String_To_Read_Write_Mode (Text  : in  String; 
                                         Read  : out Boolean;
                                         Write : out Boolean);
@@ -126,11 +130,11 @@ package Configuration is
    function String_To_Unsigned_16 (Text : String) return Unsigned_16;
    -- Convert a decimal or hexidecimal string to an unsigned_16 type --
    -- Hexidecimal numbers must be prefixed with '0x'                 --
-   
+
    function String_To_Unsigned_32 (Text : String) return Unsigned_32;
    -- Convert a decimal or hexidecimal string to an unsigned_16 type --
    -- Hexidecimal numbers must be prefixed with '0x'                 --
-   
+
    function Trim_Outside_Whitespace (Text : String) return String;
    -- Remove space characters from the begining and end of a string --
 
@@ -140,21 +144,21 @@ package Configuration is
    --                                       --
    -- Example:                              --
    -- IQ_Config_Format 1                    --
-   
+
    function Get_USB_HID_Datalink_Config_From_String(Config_Text : String) return Datalink_Configuration;
    -- USB HID Datalink Configuration Line Format --
    -- Datalink USBHID <Vendor ID> <Product ID>   --
    --                                            --
    -- Example:                                   --
    -- Datalink USBHID 0x1001 0xA008              --
-   
+
    function Get_TCP_IPv4_Datalink_Config_From_String(Config_Text : String) return Datalink_Configuration;
    -- TCP IPv4 Datalink Configuration Line Format --
    -- Datalink TCPv4 <IPv4 Address> : <Port>      --
    --                                             --
    -- Example:                                    --
    -- Datalink TCPv4 1.0.0.5 : 32000              --
-   
+
    function Get_Serial_Datalink_Config_From_String(Config_Text : String) return Datalink_Configuration;
    -- Serial Datalink Configuration Line Format                      --
    -- Datalink Serial <Baud Rate> <Parity> <Stop Bits> <Device Name> --
@@ -163,7 +167,7 @@ package Configuration is
    -- Datalink Serial 115200 None 1 "/dev/ttyUSB0"                   --
 
    function Get_Datalink_Config_From_String(Config_Text : String) return Datalink_Configuration;
-   
+
    procedure String_To_Adaptable_Parameter (Record_Text     : in  String;
                                             Parameter       : out Adaptable_Parameter_Record;
                                             Parameter_Valid : out Boolean);

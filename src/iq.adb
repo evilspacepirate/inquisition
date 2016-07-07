@@ -23,20 +23,26 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
-with Ada.Text_IO;   use Ada.Text_IO;
-with Configuration; use Configuration;
+with Ada.Text_IO;         use Ada.Text_IO;
+with Configuration;       use Configuration;
 with Control_Panel;
-with Interfaces;    use Interfaces;
-with Glib;          use Glib;
-with Glib.Object;   use Glib.Object;
-with Gtk;           use Gtk;
-with Gtk.Main;      
-with Gtk.Box;       use Gtk.Box;
-with Gtk.Enums;     use Gtk.Enums;
-with Gtk.Handlers;  use Gtk.Handlers;
-with Gtk.Label;     use Gtk.Label;
-with Gtk.Paned;     use Gtk.Paned;
-with Gtk.Window;    use Gtk.Window;
+with Interfaces;          use Interfaces;
+with Glib;                use Glib;
+with Glib.Object;         use Glib.Object;
+with Glib.Properties;
+with Gtk;                 use Gtk;
+with Gtk.Main;
+with Gtk.Box;             use Gtk.Box;
+with Gtk.Enums;           use Gtk.Enums;
+with Gtk.Handlers;        use Gtk.Handlers;
+with Gtk.Label;           use Gtk.Label;
+with Gtk.Paned;           use Gtk.Paned;
+with Gtk.Text_Buffer;     use Gtk.Text_Buffer;
+with Gtk.Text_Iter;       use Gtk.Text_Iter;
+with Gtk.Text_Tag;        use Gtk.Text_Tag;
+with Gtk.Text_View;       use Gtk.Text_View;
+with Gtk.Scrolled_Window; use Gtk.Scrolled_Window;
+with Gtk.Window;          use Gtk.Window;
 
 function Iq return Integer is
 
@@ -44,20 +50,32 @@ function Iq return Integer is
 
    package Basic_Callback is new Gtk.Handlers.Callback(GObject_Record);
 
-   Status_Bar_Pad_Pixels   : constant := 7;
+   Status_Bar_Pad_Pixels     : constant := 7;
 
-   Main_Window             : Gtk_Window;
-   Main_Window_Box         : Gtk_VBox;
-   Main_Window_Label       : Gtk_Label;
-   Main_Panel_HPane        : Gtk_HPaned;
-   Status_Bar_Box          : Gtk_HBox;
-   Connection_Config_Label : Gtk_Label;
-   Protocol_Label          : Gtk_Label;
+   Main_Window               : Gtk_Window;
+   Main_Window_Box           : Gtk_VBox;
+   Main_Window_VPane         : Gtk_VPaned;
+   Main_Panel_HPane          : Gtk_HPaned;
+   Status_Bar_Box            : Gtk_HBox;
+   Connection_Config_Label   : Gtk_Label;
+   Protocol_Label            : Gtk_Label;
+   System_Messages_Window    : Gtk_Scrolled_Window;
+--   System_Messages_Box       : Gtk_HBox;
+   System_Messages_Text_View : Gtk_Text_View;
+   System_Messages_Buffer    : Gtk_Text_Buffer;
 
-   Adaptable_Parameters    : Adaptable_Parameter_Record_Vectors.Vector;
-   Config                  : Datalink_Configuration;
-   Config_Errors           : UnStr.Unbounded_String;
-   Config_Valid            : Boolean;
+   Error_Text_Tag            : Gtk_Text_Tag;
+
+   Adaptable_Parameters      : Adaptable_Parameter_Record_Vectors.Vector;
+   Config                    : Datalink_Configuration;
+   Config_Errors             : UnStr.Unbounded_String;
+   Config_Valid              : Boolean;
+
+   -- Search for an inquisition configuration file in the current working --
+   -- directory and load configuration data from it. If there are more    --
+   -- than one .iq files in the local directory or none, no configuration --
+   -- files will be loaded.                                               --
+   Config_File_Name          : String := Get_Configuration_File_Name;
 
    ---------------------
    -- ON_MAIN_DESTROY --
@@ -70,59 +88,46 @@ function Iq return Integer is
 
 begin
 
-   -- Search for an inquisition configuration file in the current working --
-   -- directory and load configuration data from it. If there are more    --
-   -- than one .iq files in the local directory or none, no configuration --
-   -- files will be loaded.                                               --
-   declare
-      Config_File_Name : String := Get_Configuration_File_Name;
-   begin
-
-      if Config_File_Name = "" then
-         Put_Line("iq: Error: No configuration file found in the current directory");
-         return 1;
-      end if;
-
-      Get_Config_From_File(Config_File_Name,
-                           Adaptable_Parameters,
-                           Config,
-                           Config_Errors,
-                           Config_Valid);
-
-      if UnStr.Length(Config_Errors) /= 0 then
-         Put_Line("iq: Errors found in processing configuration file: " & Config_File_Name);
-         Put_Line(Unstr.To_String(Config_Errors));
-      end if;
-
-      if not Config_Valid then
-         Put_Line("Invalid datalink configuration. Aborting.");
-         return 2;
-      end if;
-   end;
+   Get_Config_From_File(Config_File_Name,
+                        Adaptable_Parameters,
+                        Config,
+                        Config_Errors,
+                        Config_Valid);
 
    Gtk.Main.Init;
 
    Gtk_New(Main_Window);
-   Gtk_New_VBox(Main_Window_Box);
-   Gtk_New(Main_Window_Label);
+   Gtk_New_VPaned(Main_Window_VPane);
    Gtk_New_HPaned(Main_Panel_HPane);
+   Gtk_New_VBox(Main_Window_Box);
+
+   -- Create Text View for system messages --
+   Gtk_New(System_Messages_Window);
+   Gtk_New(System_Messages_Buffer);
+   Gtk_New(System_Messages_Text_View, System_Messages_Buffer);
+   Set_Policy(System_Messages_Window, Policy_Automatic, Policy_Automatic);
+   Error_Text_Tag := Create_Tag(System_Messages_Buffer, "Error");
+   Glib.Properties.Set_Property(Error_Text_Tag, Foreground_Property, "#FF0000");
+   Add(System_Messages_Window, System_Messages_Text_View);
+
+   -- Create status bar --
    Gtk_New_HBox(Status_Bar_Box);
    Gtk_New(Connection_Config_Label);
    Gtk_New(Protocol_Label);
-
    Set_Label(Connection_Config_Label, Datalink_Configuration_To_String(Config));
    Set_Label(Protocol_Label, "Protocol Placeholder");
-   Set_Label(Main_Window_Label, "Main Window Area");
-
-   Main_Window.Set_Default_Size(400, 400);
-
    Pack_Start(Status_Bar_Box, Connection_Config_Label, False, False, Status_Bar_Pad_Pixels);
    Pack_End(Status_Bar_Box, Protocol_Label, False, False, Status_Bar_Pad_Pixels);
+
+   Main_Window.Set_Default_Size(400, 400);
 
    Control_Panel.Create(Main_Window, Adaptable_Parameters);
    Add(Main_Panel_HPane, Control_Panel.View);
 
-   Add(Main_Window_Box, Main_Panel_HPane);
+   Add1(Main_Window_VPane, Main_Panel_HPane);
+   Add2(Main_Window_VPane, System_Messages_Window);
+
+   Add(Main_Window_Box, Main_Window_VPane);
    Add(Main_Window_Box, Status_Bar_Box);
 
    Add(Main_Window, Main_Window_Box);
@@ -135,6 +140,23 @@ begin
                      Pack_Type => Pack_Start);
 
    Basic_Callback.Connect(Main_Window, "destroy", On_Main_Destroy'access);
+
+   declare
+      Iter : Gtk_Text_Iter;
+   begin
+      Get_End_Iter(System_Messages_Buffer, Iter);
+      if Config_File_Name /= "" then
+         Insert(System_Messages_Buffer,
+                Iter,
+                "Loading configuration from " & Config_File_Name & CRLF);
+         Insert_With_Tags(System_Messages_Buffer,
+                          Iter,
+                          UnStr.To_String(Config_Errors),
+                          Error_Text_Tag);
+      else
+         Insert(System_Messages_Buffer, Iter, "No configuration file found in current directory.");
+      end if;
+   end;
 
    Main_Window.Show_All;
    Gtk.Main.Main;

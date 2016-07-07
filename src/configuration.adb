@@ -34,20 +34,16 @@ package body Configuration is
 
    use Adaptable_Parameter_Record_Vectors;
 
-   Delimeter_Symbol          : constant Character := '|';
+   Delimeter_Symbol       : constant Character := '|';
+   Tab_Character          : constant Character := Character'Val(9);
 
-   Tab_Character             : constant Character := Character'Val(9);
-   Line_Feed_Character       : constant Character := Character'Val(10);
-   Carriage_Return_Character : constant Character := Character'Val(13);
-   CRLF                      : constant String    := Carriage_Return_Character & Line_Feed_Character;
-
-   Serial_Datalink_Tag       : constant String    := "Data_link Serial";
-   TCP_IPv4_Datalink_Tag     : constant String    := "Data_link TCPv4";
-   USB_HID_Datalink_Tag      : constant String    := "Data_link USBHID";
-   Configuration_Type_Tag    : constant String    := "IQ_Config_Format";
-   Sampling_Tag              : constant String    := "Sampling:";
-   Sample_Period_Tag         : constant String    := "Sample Period:";
-   Default_Set_Value_Tag     : constant String    := "Default Set Value:";
+   Serial_Datalink_Tag    : constant String    := "Data_link Serial";
+   TCP_IPv4_Datalink_Tag  : constant String    := "Data_link TCPv4";
+   USB_HID_Datalink_Tag   : constant String    := "Data_link USBHID";
+   Configuration_Type_Tag : constant String    := "IQ_Config_Format";
+   Sampling_Tag           : constant String    := "Sampling:";
+   Sample_Period_Tag      : constant String    := "Sample Period:";
+   Default_Set_Value_Tag  : constant String    := "Default Set Value:";
 
    -------------------
    -- TO_HEX_STRING --
@@ -1230,6 +1226,10 @@ package body Configuration is
       end loop;
       Close(Config_File);
       return File_Format;
+   exception
+      when Ada.Text_IO.Name_Error =>
+         -- Could not open file --
+         return File_Format;
    end Get_Config_File_Format_From_File;
 
    --------------------------
@@ -1295,52 +1295,52 @@ package body Configuration is
                   when Syntax_Error =>
                      Close(Config_File);
                      Config_Valid := False;
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Syntax error: Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Syntax error" & CRLF));
                      return;
                   when Conversion_Failure =>
                      Close(Config_File);
                      Config_Valid := False;
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure" & File_Name & CRLF));
                      return;
                   when Conversion_Failure_Stop_Bits =>
                      Close(Config_File);
                      Config_Valid := False;
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for Stop Bits on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for Stop Bits field" & CRLF));
                      return;
                   when Conversion_Failure_Baud =>
                      Close(Config_File);
                      Config_Valid := False;
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for Baud Rate on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for Baud Rate field" & CRLF));
                      return;
                   when Conversion_Failure_Device_Name =>
                      Close(Config_File);
                      Config_Valid := False;
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for Device Name on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for Device Name" & CRLF));
                      return;
                   when Conversion_Failure_Parity =>
                      Close(Config_File);
                      Config_Valid := False;
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for Parity on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for Parity" & CRLF));
                      return;
                   when Conversion_Failure_IPv4_Address =>
                      Close(Config_File);
                      Config_Valid := False;
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for IPv4 Address on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for IPv4 Address" & CRLF));
                      return;
                   when Conversion_Failure_TCP_Port =>
                      Close(Config_File);
                      Config_Valid := False;
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for TCP Port on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for TCP Port" & CRLF));
                      return;
                   when Conversion_Failure_Vendor_ID =>
                      Close(Config_File);
                      Config_Valid := False;
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for USB Vendor ID on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for USB Vendor ID" & CRLF));
                      return;
                   when Conversion_Failure_Product_ID =>
                      Close(Config_File);
                      Config_Valid := False;
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Conversion Failure: Invalid value for USB Product ID on Line:" & Natural'image(Line_Number) & " in configuration file: " & File_Name & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for USB Product ID" & CRLF));
                end;
 
                -- Parse line as a adaptable parameter record declaration --
@@ -1356,25 +1356,25 @@ package body Configuration is
 
                exception
                   when Syntax_Error =>
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Adaptable parameter declaration syntax error. Parameter not added to control panel." & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Adaptable parameter declaration syntax error. Parameter not added to control panel." & CRLF));
                   when Parameter_Missing_Default_Set_Value =>
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Writable adaptable parameter declaration missing '" & Default_Set_Value_Tag & "' field. Parameter not added to control panel." & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Writable adaptable parameter declaration missing '" & Default_Set_Value_Tag & "' field. Parameter not added to control panel." & CRLF));
                   when Parameter_Missing_UID =>
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Adaptable parameter declaration missing 'UID' field. Parameter not added to control panel." & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Adaptable parameter declaration missing 'UID' field. Parameter not added to control panel." & CRLF));
                   when Parameter_Missing_Sampling_Period =>
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Readable adaptable parameter declaration missing '" & Sample_Period_Tag & "' field. Parameter not added to control panel." & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Readable adaptable parameter declaration missing '" & Sample_Period_Tag & "' field. Parameter not added to control panel." & CRLF));
                   when Parameter_Missing_Is_Sampling =>
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Readable adaptable parameter declaration missing '" & Sampling_Tag & "' field. Parameter not added to control panel." & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Readable adaptable parameter declaration missing '" & Sampling_Tag & "' field. Parameter not added to control panel." & CRLF));
                   when Conversion_Failure_Is_Sampling =>
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Invalid value for '" & Sampling_Tag & "' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Invalid value for '" & Sampling_Tag & "' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
                   when Conversion_Failure_Read_Write_Mode =>
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Invalid value for 'Read/Write Mode' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Invalid value for 'Read/Write Mode' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
                   when Conversion_Failure_Sample_Period =>
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Invalid value for '" & Sample_Period_Tag & "' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Invalid value for '" & Sample_Period_Tag & "' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
                   when Conversion_Failure_UID =>
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Invalid value for 'UID' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Invalid value for 'UID' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
                   when Conversion_Failure_Default_Set_Value =>
-                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String(File_Name & ":" & Natural'image(Line_Number) & " Error: Invalid value for '" & Default_Set_Value_Tag & "' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Invalid value for '" & Default_Set_Value_Tag & "' field in adaptable parameter declaration. Parameter not added to control panel." & CRLF));
                end;
             end if;
          exception
