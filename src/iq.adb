@@ -27,15 +27,18 @@ with Ada.Text_IO;         use Ada.Text_IO;
 with Configuration;       use Configuration;
 with Control_Panel;
 with Interfaces;          use Interfaces;
+with Gdk.Event;           use Gdk.Event;
 with Glib;                use Glib;
 with Glib.Object;         use Glib.Object;
 with Glib.Properties;
+with Glib.Values;         use Glib.Values;
 with Gtk;                 use Gtk;
-with Gtk.Main;
+with Gtk.Arguments;       use Gtk.Arguments;
 with Gtk.Box;             use Gtk.Box;
 with Gtk.Enums;           use Gtk.Enums;
 with Gtk.Handlers;        use Gtk.Handlers;
 with Gtk.Label;           use Gtk.Label;
+with Gtk.Main;
 with Gtk.Paned;           use Gtk.Paned;
 with Gtk.Text_Buffer;     use Gtk.Text_Buffer;
 with Gtk.Text_Iter;       use Gtk.Text_Iter;
@@ -49,6 +52,7 @@ function Iq return Integer is
    use Adaptable_Parameter_Record_Vectors;
 
    package Basic_Callback is new Gtk.Handlers.Callback(GObject_Record);
+   package Return_Callback is new Gtk.Handlers.Return_Callback(GObject_Record, Boolean);
 
    Status_Bar_Pad_Pixels     : constant := 7;
 
@@ -60,7 +64,6 @@ function Iq return Integer is
    Connection_Config_Label   : Gtk_Label;
    Protocol_Label            : Gtk_Label;
    System_Messages_Window    : Gtk_Scrolled_Window;
---   System_Messages_Box       : Gtk_HBox;
    System_Messages_Text_View : Gtk_Text_View;
    System_Messages_Buffer    : Gtk_Text_Buffer;
 
@@ -71,6 +74,10 @@ function Iq return Integer is
    Config_Errors             : UnStr.Unbounded_String;
    Config_Valid              : Boolean;
 
+   Main_Window_Height        : GInt;
+   System_Messages_Area_Size : GInt;
+   System_Messages_Area_Set  : Boolean := False;
+
    -- Search for an inquisition configuration file in the current working --
    -- directory and load configuration data from it. If there are more    --
    -- than one .iq files in the local directory or none, no configuration --
@@ -80,11 +87,50 @@ function Iq return Integer is
    ---------------------
    -- ON_MAIN_DESTROY --
    ---------------------
-   
+
    procedure On_Main_Destroy (Self : access GObject_Record'class) is
    begin
       Gtk.Main.Main_Quit;
    end On_Main_Destroy;
+
+   -------------------------------------
+   -- ON_MAIN_WINDOW_PANE_SIZE_CHANGE --
+   -------------------------------------
+
+   procedure On_Main_Window_Pane_Size_Change (Self : access GObject_Record'class) is
+   begin
+      -- This callback is triggered whenever the position of the main --
+      -- window vertical pane is changed.                             --
+      if System_Messages_Area_Set then
+         System_Messages_Area_Size := Main_Window_Height - Get_Position(Main_Window_VPane);
+      end if;
+   end On_Main_Window_Pane_Size_Change;
+
+   --------------------------------
+   -- ON_MAIN_WINDOW_SIZE_CHANGE --
+   --------------------------------
+
+   function On_Main_Window_Size_Change (Self   : access GObject_Record'class;
+                                        Params : GValues) return Boolean is
+      Event           : constant Gdk_Event := To_Event(Params, 1);
+      Slider_Position : constant GInt      := Get_Position(Main_Window_VPane);
+   begin
+      -- This callback is triggered whenever the size of the main --
+      -- window has changed.                                      --
+
+      Main_Window_Height := Get_Height(Event);
+
+      -- Update position of the Main Window Pane Slider such that --
+      -- the size of the System Messages area is constant.        --
+      if System_Messages_Area_Set then
+         Set_Position(Main_Window_VPane, Main_Window_Height - System_Messages_Area_Size);
+      else
+         System_Messages_Area_Size := Main_Window_Height - Slider_Position;
+         System_Messages_Area_Set  := True;
+      end if;
+
+      return False;
+   end On_Main_Window_Size_Change;
 
 begin
 
@@ -140,6 +186,8 @@ begin
                      Pack_Type => Pack_Start);
 
    Basic_Callback.Connect(Main_Window, "destroy", On_Main_Destroy'access);
+   Return_Callback.Connect(Main_Window, "configure_event", On_Main_Window_Size_Change'access);
+   Basic_Callback.Connect(Main_Window, "size_allocate", On_Main_Window_Pane_Size_Change'access);
 
    declare
       Iter : Gtk_Text_Iter;
