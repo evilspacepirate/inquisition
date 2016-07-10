@@ -167,8 +167,10 @@ begin
 
    Main_Window.Set_Default_Size(400, 400);
 
-   Control_Panel.Create(Main_Window, Adaptable_Parameters);
-   Add(Main_Panel_HPane, Control_Panel.View);
+   if Config_Valid then
+      Control_Panel.Create(Main_Window, Adaptable_Parameters);
+      Add(Main_Panel_HPane, Control_Panel.View);
+   end if;
 
    Add1(Main_Window_VPane, Main_Panel_HPane);
    Add2(Main_Window_VPane, System_Messages_Window);

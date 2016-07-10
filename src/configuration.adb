@@ -1385,6 +1385,11 @@ package body Configuration is
          Line_Number := Line_Number + 1;
       end loop;
       Close(Config_File);
+
+      if Config_Valid = False then
+         Error_Text := UnStr.To_Unbounded_String("Error: Missing Data_link configuration declaration in configuration file: " & File_Name);
+      end if;
+
    exception
       when Too_Many_File_Formats_Specified =>
          Error_Text := UnStr.To_Unbounded_String("Error: More than one IQ_Config_Format declaration specified for configuration file: " & File_Name);
