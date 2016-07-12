@@ -67,7 +67,7 @@ package body Raw_Data_Panel is
       Add(Raw_Data_Window, Text_View);
 
       Pack_Start(Box, Control_Box,     False, False);
-      Pack_End(Box,   Raw_Data_Window, True,  True);
+      Pack_End  (Box, Raw_Data_Window, True,  True);
       
    end Create;
 

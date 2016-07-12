@@ -23,31 +23,27 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
-with Ada.Text_IO;         use Ada.Text_IO;
-with Configuration;       use Configuration;
+with Ada.Text_IO;           use Ada.Text_IO;
+with Configuration;         use Configuration;
 with Control_Panel;
 with Configuration_Panel;
-with Interfaces;          use Interfaces;
-with Gdk.Event;           use Gdk.Event;
-with Glib;                use Glib;
-with Glib.Object;         use Glib.Object;
+with Interfaces;            use Interfaces;
+with Gdk.Event;             use Gdk.Event;
+with Glib;                  use Glib;
+with Glib.Object;           use Glib.Object;
 with Glib.Properties;
-with Glib.Values;         use Glib.Values;
-with Gtk;                 use Gtk;
-with Gtk.Arguments;       use Gtk.Arguments;
-with Gtk.Box;             use Gtk.Box;
-with Gtk.Enums;           use Gtk.Enums;
-with Gtk.Handlers;        use Gtk.Handlers;
-with Gtk.Label;           use Gtk.Label;
+with Glib.Values;           use Glib.Values;
+with Gtk;                   use Gtk;
+with Gtk.Arguments;         use Gtk.Arguments;
+with Gtk.Box;               use Gtk.Box;
+with Gtk.Enums;             use Gtk.Enums;
+with Gtk.Handlers;          use Gtk.Handlers;
+with Gtk.Label;             use Gtk.Label;
 with Gtk.Main;
-with Gtk.Paned;           use Gtk.Paned;
-with Gtk.Scrolled_Window; use Gtk.Scrolled_Window;
-with Gtk.Text_Buffer;     use Gtk.Text_Buffer;
-with Gtk.Text_Iter;       use Gtk.Text_Iter;
-with Gtk.Text_Tag;        use Gtk.Text_Tag;
-with Gtk.Text_View;       use Gtk.Text_View;
-with Gtk.Window;          use Gtk.Window;
+with Gtk.Paned;             use Gtk.Paned;
+with Gtk.Window;            use Gtk.Window;
 with Raw_Data_Panel;
+with System_Messages_Panel;
 
 function Iq return Integer is
 
@@ -66,11 +62,6 @@ function Iq return Integer is
    Right_Side_Box            : Gtk_VBox;
    Connection_Config_Label   : Gtk_Label;
    Protocol_Label            : Gtk_Label;
-   System_Messages_Window    : Gtk_Scrolled_Window;
-   System_Messages_Text_View : Gtk_Text_View;
-   System_Messages_Buffer    : Gtk_Text_Buffer;
-
-   Error_Text_Tag            : Gtk_Text_Tag;
 
    Adaptable_Parameters      : Adaptable_Parameter_Record_Vectors.Vector;
    Config                    : Datalink_Configuration;
@@ -151,16 +142,6 @@ begin
    Gtk_New_VBox(Main_Window_Box);
    Gtk_New_VBox(Right_Side_Box);
 
-   -- Create Text View for system messages --
-   Gtk_New(System_Messages_Window);
-   Gtk_New(System_Messages_Buffer);
-   Gtk_New(System_Messages_Text_View, System_Messages_Buffer);
-   Set_Policy(System_Messages_Window, Policy_Automatic, Policy_Automatic);
-   Error_Text_Tag := Create_Tag(System_Messages_Buffer, "Error");
-   Glib.Properties.Set_Property(Error_Text_Tag, Foreground_Property, "#FF0000");
-   Add(System_Messages_Window, System_Messages_Text_View);
-   Set_Editable(System_Messages_Text_View, False);
-
    -- Create status bar --
    Gtk_New_HBox(Status_Bar_Box);
    Gtk_New(Connection_Config_Label);
@@ -181,12 +162,13 @@ begin
 
    Raw_Data_Panel.Create;
    Configuration_Panel.Create;
+   System_Messages_Panel.Create;
 
    Pack_Start(Right_Side_Box, Configuration_Panel.Box, False, False);
    Pack_End  (Right_Side_Box, Raw_Data_Panel.Box,      True,  True);
 
    Add1(Main_Window_VPane, Main_Panel_HPane);
-   Add2(Main_Window_VPane, System_Messages_Window);
+   Add2(Main_Window_VPane, System_Messages_Panel.Box);
 
    Add(Main_Window_Box, Main_Window_VPane);
    Add(Main_Window_Box, Status_Bar_Box);
@@ -204,22 +186,12 @@ begin
    Return_Callback.Connect(Main_Window, "configure_event", On_Main_Window_Size_Change'access);
    Basic_Callback.Connect(Main_Window, "size_allocate", On_Main_Window_Pane_Size_Change'access);
 
-   declare
-      Iter : Gtk_Text_Iter;
-   begin
-      Get_End_Iter(System_Messages_Buffer, Iter);
-      if Config_File_Name /= "" then
-         Insert(System_Messages_Buffer,
-                Iter,
-                "Loading configuration from " & Config_File_Name & CRLF);
-         Insert_With_Tags(System_Messages_Buffer,
-                          Iter,
-                          UnStr.To_String(Config_Errors),
-                          Error_Text_Tag);
-      else
-         Insert(System_Messages_Buffer, Iter, "No configuration file found in current directory.");
-      end if;
-   end;
+   if Config_File_Name /= "" then
+      System_Messages_Panel.Append_Message("Loading configuration from " & Config_File_Name & CRLF);
+      System_Messages_Panel.Append_Error(UnStr.To_String(Config_Errors));
+   else
+      System_Messages_Panel.Append_Message("No configuration file found in current directory.");
+   end if;
 
    Main_Window.Show_All;
    Gtk.Main.Main;
