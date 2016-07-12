@@ -47,6 +47,7 @@ with Gtk.Text_Iter;       use Gtk.Text_Iter;
 with Gtk.Text_Tag;        use Gtk.Text_Tag;
 with Gtk.Text_View;       use Gtk.Text_View;
 with Gtk.Window;          use Gtk.Window;
+with Raw_Data_Panel;
 
 function Iq return Integer is
 
@@ -55,9 +56,7 @@ function Iq return Integer is
    package Basic_Callback is new Gtk.Handlers.Callback(GObject_Record);
    package Return_Callback is new Gtk.Handlers.Return_Callback(GObject_Record, Boolean);
 
-   Status_Bar_Pad_Pixels     : constant        := 7;
-   Data_Sent_Color           : constant String := "#254A64";
-   Data_Received_Color       : constant String := "#484D53";
+   Status_Bar_Pad_Pixels     : constant := 7;
 
    Main_Window               : Gtk_Window;
    Main_Window_Box           : Gtk_VBox;
@@ -70,14 +69,8 @@ function Iq return Integer is
    System_Messages_Window    : Gtk_Scrolled_Window;
    System_Messages_Text_View : Gtk_Text_View;
    System_Messages_Buffer    : Gtk_Text_Buffer;
-   Raw_Data_Control_Box      : Gtk_HBox;
-   Raw_Data_Window           : Gtk_Scrolled_Window;
-   Raw_Data_Text_View        : Gtk_Text_View;
-   Raw_Data_Buffer           : Gtk_Text_Buffer;
 
    Error_Text_Tag            : Gtk_Text_Tag;
-   Received_Data_Text_Tag    : Gtk_Text_Tag;
-   Sent_Data_Text_Tag        : Gtk_Text_Tag;
 
    Adaptable_Parameters      : Adaptable_Parameter_Record_Vectors.Vector;
    Config                    : Datalink_Configuration;
@@ -157,7 +150,6 @@ begin
    Gtk_New_HPaned(Main_Panel_HPane);
    Gtk_New_VBox(Main_Window_Box);
    Gtk_New_VBox(Right_Side_Box);
-   Gtk_New_HBox(Raw_Data_Control_Box);
 
    -- Create Text View for system messages --
    Gtk_New(System_Messages_Window);
@@ -187,26 +179,11 @@ begin
 
    Add2(Main_Panel_HPane, Right_Side_Box);
 
-   -- Create raw data (on the wire) display area --
-
-   Gtk_New(Raw_Data_Window);
-   Gtk_New(Raw_Data_Buffer);
-   Gtk_New(Raw_Data_Text_View, Raw_Data_Buffer);
-   Set_Policy(Raw_Data_Window, Policy_Automatic, Policy_Automatic);
-   Received_Data_Text_Tag := Create_Tag(Raw_Data_Buffer, "Data_Received");
-   Sent_Data_Text_Tag     := Create_Tag(Raw_Data_Buffer, "Data_Sent");
-   Glib.Properties.Set_Property(Received_Data_Text_Tag, Foreground_Property, Data_Received_Color);
-   Glib.Properties.Set_Property(Sent_Data_Text_Tag, Foreground_Property, Data_Sent_Color);
-   Add(Raw_Data_Window, Raw_Data_Text_View);
-   Set_Editable(Raw_Data_Text_View, False);
-
-   -- Create Right Side VBox which holds the data link configuration panel --
-   -- and the raw message display area.                                    --
+   Raw_Data_Panel.Create;
    Configuration_Panel.Create;
 
    Pack_Start(Right_Side_Box, Configuration_Panel.Box, False, False);
-   Pack_Start(Right_Side_Box, Raw_Data_Control_Box, False, False);
-   Pack_End(Right_Side_Box, Raw_Data_Window, True, True);
+   Pack_End  (Right_Side_Box, Raw_Data_Panel.Box,      True,  True);
 
    Add1(Main_Window_VPane, Main_Panel_HPane);
    Add2(Main_Window_VPane, System_Messages_Window);
