@@ -26,6 +26,10 @@ with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
 with Interfaces;                        use Interfaces;
 
 package Configuration is
+
+   type Byte is mod 2**8;
+   type Word is mod 2**16;
+   type Double_Word is mod 2**32;
    
    package UnStr renames Ada.Strings.Unbounded;
    package String_Vectors is new Indefinite_Vectors (Natural, UnStr.Unbounded_String);
@@ -51,11 +55,23 @@ package Configuration is
    Conversion_Failure_Vendor_ID         : exception;
    Conversion_Failure_Product_ID        : exception;
    
-   type Protocol_Type is (NVP, NVP_With_Routing, IQ);
+   type Protocol_Type is (NVP, NVP_With_Routing, IQ, None);
+   type Address_Size_Type is (Byte_Sized, Word_Sized, Double_Word_Sized, None);
    type Parity_Type is (Even, Odd, None);
    type Stop_Bits_Type is (Two, One, None);
    type Datalink_Type is (None, TCP_IPv4, Serial, USB_HID);
    type Config_File_Format is (One, Undefined);
+
+   type Protocol_Confguration (Protocol : Protocol_Type := None) is record
+      case Protocol is
+         when NVP_With_Routing | IQ =>
+            Address_Size : Address_Size_Type;
+            Source       : Double_Word;
+            Destination  : Double_Word;
+         when NVP | None =>
+            null;
+      end case;
+   end record;
 
    type Datalink_Configuration (Datalink : Datalink_Type := None) is record
       case Datalink is
