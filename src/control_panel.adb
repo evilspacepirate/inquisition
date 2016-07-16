@@ -35,6 +35,7 @@ with Gtk.Cell_Renderer_Toggle; use Gtk.Cell_Renderer_Toggle;
 with Gtk.Cell_Renderer_Pixbuf; use Gtk.Cell_Renderer_Pixbuf;
 with Gtk.Window;               use Gtk.Window;
 with Interfaces;               use Interfaces;
+with Util;                     use Util;
 
 package body Control_Panel is
 

@@ -20,40 +20,45 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
+with Ada.Characters.Latin_1;
 with Ada.Containers.Indefinite_Vectors; use Ada.Containers;
 with Ada.Strings.Fixed;
 with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
 with Interfaces;                        use Interfaces;
+with Util;                              use Util;
 
 package Configuration is
+
+   use Ada.Characters;
 
    type Byte is mod 2**8;
    type Word is mod 2**16;
    type Double_Word is mod 2**32;
    
-   package UnStr renames Ada.Strings.Unbounded;
-   package String_Vectors is new Indefinite_Vectors (Natural, UnStr.Unbounded_String);
-   
-   Too_Many_File_Formats_Specified      : exception;
-   Syntax_Error                         : exception;
-   Parameter_Missing_Default_Set_Value  : exception;
-   Parameter_Missing_UID                : exception;
-   Parameter_Missing_Sampling_Period    : exception;
-   Parameter_Missing_Is_Sampling        : exception;
-   Conversion_Failure                   : exception;
-   Conversion_Failure_UID               : exception;
-   Conversion_Failure_Default_Set_Value : exception;
-   Conversion_Failure_Is_Sampling       : exception;
-   Conversion_Failure_Read_Write_Mode   : exception;
-   Conversion_Failure_Sample_Period     : exception;
-   Conversion_Failure_Stop_Bits         : exception;
-   Conversion_Failure_Baud              : exception;
-   Conversion_Failure_Device_Name       : exception;
-   Conversion_Failure_Parity            : exception;
-   Conversion_Failure_IPv4_Address      : exception;
-   Conversion_Failure_TCP_Port          : exception;
-   Conversion_Failure_Vendor_ID         : exception;
-   Conversion_Failure_Product_ID        : exception;
+   Too_Many_File_Formats_Specified            : exception;
+   Syntax_Error                               : exception;
+   Parameter_Missing_Default_Set_Value        : exception;
+   Parameter_Missing_UID                      : exception;
+   Parameter_Missing_Sampling_Period          : exception;
+   Parameter_Missing_Is_Sampling              : exception;
+   Conversion_Failure                         : exception;
+   Conversion_Failure_UID                     : exception;
+   Conversion_Failure_Default_Set_Value       : exception;
+   Conversion_Failure_Is_Sampling             : exception;
+   Conversion_Failure_Read_Write_Mode         : exception;
+   Conversion_Failure_Sample_Period           : exception;
+   Conversion_Failure_Stop_Bits               : exception;
+   Conversion_Failure_Baud                    : exception;
+   Conversion_Failure_Device_Name             : exception;
+   Conversion_Failure_Parity                  : exception;
+   Conversion_Failure_IPv4_Address            : exception;
+   Conversion_Failure_TCP_Port                : exception;
+   Conversion_Failure_Vendor_ID               : exception;
+   Conversion_Failure_Product_ID              : exception;
+   Conversion_Failure_Address                 : exception;
+   IQ_Protocol_Declaration_Syntax_Error       : exception;
+   NVP_Routing_Declaration_Syntax_Error       : exception;
+   Protocol_Declaration_Address_Size_Mismatch : exception;
    
    type Protocol_Type is (NVP, NVP_With_Routing, IQ, None);
    type Address_Size_Type is (Byte_Sized, Word_Sized, Double_Word_Sized, None);
@@ -62,12 +67,16 @@ package Configuration is
    type Datalink_Type is (None, TCP_IPv4, Serial, USB_HID);
    type Config_File_Format is (One, Undefined);
 
-   type Protocol_Confguration (Protocol : Protocol_Type := None) is record
+   type Address_Type is record
+      Address : Unsigned_32;
+      Size    : Address_Size_Type;
+   end record;
+
+   type Protocol_Configuration (Protocol : Protocol_Type := None) is record
       case Protocol is
          when NVP_With_Routing | IQ =>
-            Address_Size : Address_Size_Type;
-            Source       : Double_Word;
-            Destination  : Double_Word;
+            Source       : Address_Type;
+            Destination  : Address_Type;
          when NVP | None =>
             null;
       end case;
@@ -105,9 +114,7 @@ package Configuration is
       Sample_Period       : UnStr.Unbounded_String;
    end record;
 
-   Line_Feed_Character       : constant Character := Character'Val(10);
-   Carriage_Return_Character : constant Character := Character'Val(13);
-   CRLF                      : constant String    := Carriage_Return_Character & Line_Feed_Character;
+   CRLF                   : constant String := Latin_1.CR & Latin_1.LF;
 
    package Adaptable_Parameter_Record_Vectors is new Indefinite_Vectors (Natural, Adaptable_Parameter_Record);
 
@@ -148,7 +155,7 @@ package Configuration is
    -- Hexidecimal numbers must be prefixed with '0x'                 --
 
    function String_To_Unsigned_32 (Text : String) return Unsigned_32;
-   -- Convert a decimal or hexidecimal string to an unsigned_16 type --
+   -- Convert a decimal or hexidecimal string to an unsigned_32 type --
    -- Hexidecimal numbers must be prefixed with '0x'                 --
 
    function Trim_Outside_Whitespace (Text : String) return String;
@@ -184,6 +191,34 @@ package Configuration is
 
    function Get_Datalink_Config_From_String(Config_Text : String) return Datalink_Configuration;
 
+   function Get_Protocol_Config_From_String(Protocol_Text : String) return Protocol_Configuration;
+   -- Protocol Configuration Line Format                  --
+   --                                                     --
+   -- NVP Protocol Format:                                --
+   -- Protocol NVP                                        --
+   --                                                     --
+   -- NVP Protocol with Routing Format:                   --
+   -- Protocol NVP Routing <IQ Address> <Target Address>  --
+   --                                                     --
+   -- Example with 8-bit address size:                    --
+   -- Protocol NVP Routing 0x00 0xC3                      --
+   -- Example with 16-bit address size:                   --
+   -- Protocol NVP Routing 0x0001 0x10C3                  --
+   -- Example with 32-bit address size:                   --
+   -- Protocol NVP Routing 0xF0000001 0x57001000          --
+   --                                                     --
+   -- IQ Protocol Format:                                 --
+   -- Protocol IQ <IQ Address> <Target Address>           --
+   --                                                     --
+   -- Example with 8-bit address size:                    --
+   -- Protocol IQ 0x00 0xC3                               --
+   -- Example with 16-bit address size:                   --
+   -- Protocol IQ 0x0001 0x10C3                           --
+   -- Example with 32-bit address size:                   --
+   -- Protocol IQ 0xF0000001 0x57001000                   --
+
+   function Get_Protocol_Config_From_File(File_Name : String) return Protocol_Configuration;
+
    procedure String_To_Adaptable_Parameter (Record_Text     : in  String;
                                             Parameter       : out Adaptable_Parameter_Record;
                                             Parameter_Valid : out Boolean);
@@ -208,5 +243,8 @@ package Configuration is
    function To_Hex_String(Input : Unsigned_8) return String;
 
    function To_Hex_String(Input : Unsigned_16) return String;
+
+   function To_Address_Type(Text : String) return Address_Type;
+   -- Convert an 8-bit, 16-bit, or 32-bit hexidecimal address string to an Address_Type --
 
 end Configuration;

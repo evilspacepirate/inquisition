@@ -27,23 +27,25 @@ with Ada.Strings.Unbounded;
 with Ada.Directories;                   use Ada.Directories;
 with Ada.Exceptions;                    use Ada.Exceptions;
 with Interfaces;                        use Interfaces;
+with Util;                              use Util;
 
 package body Configuration is
 
    package Unsigned_8_IO is new Modular_IO(Unsigned_8);
 
-   use Adaptable_Parameter_Record_Vectors;
+   Delimeter_Symbol              : constant Character := '|';
+   Tab_Character                 : constant Character := Character'Val(9);
 
-   Delimeter_Symbol       : constant Character := '|';
-   Tab_Character          : constant Character := Character'Val(9);
-
-   Serial_Datalink_Tag    : constant String    := "Data_link Serial";
-   TCP_IPv4_Datalink_Tag  : constant String    := "Data_link TCPv4";
-   USB_HID_Datalink_Tag   : constant String    := "Data_link USBHID";
-   Configuration_Type_Tag : constant String    := "IQ_Config_Format";
-   Sampling_Tag           : constant String    := "Sampling:";
-   Sample_Period_Tag      : constant String    := "Sample Period:";
-   Default_Set_Value_Tag  : constant String    := "Default Set Value:";
+   Serial_Datalink_Tag           : constant String    := "Data_link Serial";
+   TCP_IPv4_Datalink_Tag         : constant String    := "Data_link TCPv4";
+   USB_HID_Datalink_Tag          : constant String    := "Data_link USBHID";
+   Configuration_Type_Tag        : constant String    := "IQ_Config_Format";
+   Sampling_Tag                  : constant String    := "Sampling:";
+   Sample_Period_Tag             : constant String    := "Sample Period:";
+   Default_Set_Value_Tag         : constant String    := "Default Set Value:";
+   NVP_Protocol_Tag              : constant String    := "Protocol NVP";
+   NVP_With_Routing_Protocol_Tag : constant String    := "Protocol NVP Routing";
+   IQ_Protocol_Tag               : constant String    := "Protocol IQ";
 
    -------------------
    -- TO_HEX_STRING --
@@ -588,12 +590,12 @@ package body Configuration is
       else 
          return Undefined;
       end if;
-   
+
    exception
       when others =>
          return Undefined;
    end Get_Config_File_Format_From_String;
-   
+
    ---------------------------------------------
    -- GET_USB_HID_DATALINK_CONFIG_FROM_STRING --
    ---------------------------------------------
@@ -621,7 +623,7 @@ package body Configuration is
          when others =>
             return No_Configuration;
       end;
-      
+
       for Index in Natural range Config_Text'First .. Config_Text'Last loop
          case State is
             when Datalink_Text =>
@@ -653,7 +655,7 @@ package body Configuration is
                end if;
          end case;
       end loop;
-      
+
       begin
          Configuration.Vendor_ID  := String_To_Unsigned_16(Config_Text(Vendor_ID_Start_Index .. Vendor_ID_End_Index));
       exception
@@ -675,7 +677,7 @@ package body Configuration is
    ----------------------------------------------
    -- GET_TCP_IPV4_DATALINK_CONFIG_FROM_STRING --
    ----------------------------------------------
-   
+
    function Get_TCP_IPv4_Datalink_Config_From_String(Config_Text : String) return Datalink_Configuration is
       type Parser_State is (Datalink_Text,
                             Whitespace_1,
@@ -945,7 +947,104 @@ package body Configuration is
          return No_Config;
       end;
    end Get_Datalink_Config_From_String;
+
+   -------------------------------------
+   -- GET_PROTOCOL_CONFIG_FROM_STRING --
+   -------------------------------------
    
+   function Get_Protocol_Config_From_String(Protocol_Text : String) return Protocol_Configuration is
+      Protocol : Protocol_Type := None;
+   begin
+
+      begin
+         if Protocol_Text(Protocol_Text'First .. Protocol_Text'First + NVP_With_Routing_Protocol_Tag'Length - 1) = NVP_With_Routing_Protocol_Tag then
+            Protocol := NVP_With_Routing;
+            goto Interpret_Protocol_Specific_Configuration;
+         end if;
+      exception
+         when others =>
+            null;
+      end;
+
+      begin
+         if Protocol_Text(Protocol_Text'First .. Protocol_Text'First + NVP_Protocol_Tag'Length - 1) = NVP_Protocol_Tag then
+            Protocol := NVP;
+            goto Interpret_Protocol_Specific_Configuration;
+         end if;
+      exception
+         when others =>
+            null;
+      end;
+
+      begin
+         if Protocol_Text(Protocol_Text'First .. Protocol_Text'First + IQ_Protocol_Tag'Length - 1) = IQ_Protocol_Tag then
+            Protocol := IQ;
+            goto Interpret_Protocol_Specific_Configuration;
+         end if;
+      exception
+         when others =>
+            null;
+      end;
+
+      <<Interpret_Protocol_Specific_Configuration>>
+
+      -- Interpret protocol specific configuration elements --
+
+      case Protocol is
+         when IQ =>
+            declare
+               Configuration : Protocol_Configuration(IQ);
+               Addresses     : String_Vectors.Vector := Split_String(Protocol_Text(Protocol_Text'First + IQ_Protocol_Tag'Length + 1 .. Protocol_Text'Last),
+                                                                     " " & Latin_1.HT);
+            begin
+
+               if String_Vectors.Length(Addresses) /= 2 then
+                  raise NVP_Routing_Declaration_Syntax_Error;
+               end if;
+
+               Configuration.Source      := To_Address_Type(UnStr.To_String(String_Vectors.Element(Addresses, 0)));
+               Configuration.Destination := To_Address_Type(UnStr.To_String(String_Vectors.Element(Addresses, 1)));
+
+               if Configuration.Source.Size /= Configuration.Destination.Size then
+                  raise Protocol_Declaration_Address_Size_Mismatch;
+               end if;
+
+               return Configuration;
+            exception
+               when Conversion_Failure_Address =>
+                  raise NVP_Routing_Declaration_Syntax_Error;
+            end;
+         when NVP_With_Routing =>
+            declare
+               Configuration : Protocol_Configuration(NVP_With_Routing);
+               Addresses     : String_Vectors.Vector := Split_String(Protocol_Text(Protocol_Text'First + NVP_With_Routing_Protocol_Tag'Length + 1 .. Protocol_Text'Last),
+                                                                     " " & Latin_1.HT);
+            begin
+               if String_Vectors.Length(Addresses) /= 2 then
+                  raise NVP_Routing_Declaration_Syntax_Error;
+               end if;
+
+               Configuration.Source      := To_Address_Type(UnStr.To_String(String_Vectors.Element(Addresses, 0)));
+               Configuration.Destination := To_Address_Type(UnStr.To_String(String_Vectors.Element(Addresses, 1)));
+
+               if Configuration.Source.Size /= Configuration.Destination.Size then
+                  raise Protocol_Declaration_Address_Size_Mismatch;
+               end if;
+
+               return Configuration;
+            exception
+               when Conversion_Failure_Address =>
+                  raise NVP_Routing_Declaration_Syntax_Error;
+            end;
+         when NVP | None =>
+            declare
+               Configuration : Protocol_Configuration(Protocol);
+            begin
+               return Configuration;
+            end;
+      end case;
+   end Get_Protocol_Config_From_String;
+
    -----------------------------------
    -- STRING_TO_ADAPTABLE_PARAMETER --
    -----------------------------------
@@ -1018,7 +1117,7 @@ package body Configuration is
               Is_Sampling_Defined     : Boolean := False;
               Sampling_Period_Defined : Boolean := False;
            begin
-              
+
               -- Decode Read Write Mode --
               begin
                  String_To_Read_Write_Mode(Mode_String, Parameter.Is_Readable, Parameter.Is_Writable);
@@ -1188,6 +1287,47 @@ package body Configuration is
 
    end String_To_Adaptable_Parameter;
 
+   -----------------------------------
+   -- GET_PROTOCOL_CONFIG_FROM_FILE --
+   -----------------------------------
+
+   function Get_Protocol_Config_From_File (File_Name : String) return Protocol_Configuration is
+      Config_File   : File_Type;
+      Configuration : Protocol_Configuration;
+   begin
+      Open(Config_File, In_File, File_Name);
+
+      while not End_Of_File(Config_File) loop
+         declare
+            Line : String := Get_Line(Config_File);
+         begin
+            -- Is this a non-comment line? --
+            if Line(Line'First) /= '#' then
+               Configuration := Get_Protocol_Config_From_String(Line);
+
+               case Configuration.Protocol is
+                  when None =>
+                     null;
+                  when others =>
+                     exit;
+               end case;
+            end if;
+         exception
+            when Constraint_Error =>
+               null;
+         end;
+      end loop;
+      Close(Config_File);
+      return Configuration;
+   exception
+      when Ada.Text_IO.Name_Error =>
+         -- Could not open file --
+         return Configuration;
+      when others =>
+         Close(Config_File);
+         raise;
+   end Get_Protocol_Config_From_File;
+
    --------------------------------------
    -- GET_CONFIG_FILE_FORMAT_FROM_FILE --
    --------------------------------------
@@ -1196,6 +1336,7 @@ package body Configuration is
       Config_File : File_Type;
       File_Format : Config_File_Format := Undefined;
    begin
+
       Open(Config_File, In_File, File_Name);
 
       while not End_Of_File(Config_File) loop
@@ -1245,6 +1386,7 @@ package body Configuration is
       File_Format     : Config_File_Format;
       Line_Number     : Natural := 1;
       Config_Defined  : Boolean := False;
+      Protocol_Config : Protocol_Configuration;
    begin
 
       Config_Valid := False;
@@ -1257,6 +1399,42 @@ package body Configuration is
          Error_Text := UnStr.To_Unbounded_String("Error: No configuration file format defined. Add 'IQ_Config_Format 1' to config file.");
          return;
       end if;
+
+      -- Identify protocol configuration --
+
+      begin
+         Protocol_Config := Get_Protocol_Config_From_File(File_Name);
+      exception
+         when Protocol_Declaration_Address_Size_Mismatch =>
+            UnStr.Append(Error_Text, "Error: Protocol declaration address sizes must be the same size");
+            return;
+         when IQ_Protocol_Declaration_Syntax_Error =>
+            UnStr.Append(Error_Text, "Error: Syntax error in protocol declaration" & CRLF);
+            UnStr.Append(Error_Text, "Expected Protocol Declaration Format:" & CRLF);
+            UnStr.Append(Error_Text, "Protocol IQ <IQ Source Address> <Target Destination Address>");
+            return;
+         when NVP_Routing_Declaration_Syntax_Error =>
+            UnStr.Append(Error_Text, "Error: Syntax error in protocol declaration" & CRLF);
+            UnStr.Append(Error_Text, "Expected Protocol Declaration Format:" & CRLF);
+            UnStr.Append(Error_Text, "Protocol NVP Routing <IQ Source Address> <Target Destination Address>");
+            return;
+      end;
+
+      -- TODO Errors for everything! TODO --
+      case Protocol_Config.Protocol is
+         when IQ =>
+            UnStr.Append(Error_Text, "Error: Protocol type IQ not supported yet");
+            return;
+         when NVP_With_Routing =>
+            UnStr.Append(Error_Text, "Error: Protocol type NVP with routing not supported yet");
+            return;
+         when NVP =>
+            UnStr.Append(Error_Text, "Error: Protocl type NVP not supported yet");
+            return;
+         when None =>
+            UnStr.Append(Error_Text, "Error: No protocol configuration defined.");
+            return;
+      end case;
 
       -- Parse configuration data from file --
 
@@ -1394,5 +1572,35 @@ package body Configuration is
       when Too_Many_File_Formats_Specified =>
          Error_Text := UnStr.To_Unbounded_String("Error: More than one IQ_Config_Format declaration specified for configuration file: " & File_Name);
    end Get_Config_From_File;
+
+   -- TO_ADDRESS_TYPE --
+
+   function To_Address_Type(Text : String) return Address_Type is
+      Address : Address_Type;
+   begin
+
+      if Text(Text'First .. Text'First + 1) /= "0x" then
+         raise Conversion_Failure_Address;
+      end if;
+
+      case Text'Length is
+         when 4 =>
+            Address.Size := Byte_Sized;
+         when 6 =>
+            Address.Size := Word_Sized;
+         when 10 =>
+            Address.Size := Double_Word_Sized;
+         when others =>
+            raise Conversion_Failure_Address;
+      end case;
+
+      Address.Address := String_To_Unsigned_32(Text);
+
+      return Address;
+
+   exception
+      when others =>
+         raise Conversion_Failure_Address;
+   end To_Address_Type;
 
 end Configuration;

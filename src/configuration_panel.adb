@@ -27,6 +27,7 @@ with Gtk.GEntry;       use Gtk.GEntry;
 with Gtk.Label;        use Gtk.Label;
 with Gtk.Radio_Button; use Gtk.Radio_Button;
 with Gtk.Separator;    use Gtk.Separator;
+with Util;             use Util;
 
 package body Configuration_Panel is
 

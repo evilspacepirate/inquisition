@@ -44,6 +44,7 @@ with Gtk.Paned;             use Gtk.Paned;
 with Gtk.Window;            use Gtk.Window;
 with Raw_Data_Panel;
 with System_Messages_Panel;
+with Util;                  use Util;
 
 function Iq return Integer is
 
