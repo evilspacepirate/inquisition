@@ -120,6 +120,8 @@ package Configuration is
 
    function Datalink_Configuration_To_String(Config : Datalink_Configuration) return String;
 
+   function Protocol_Configuration_To_String(Config : Protocol_Configuration) return String;
+
    procedure Dump_Adaptable_Parameter(Parameter : Adaptable_Parameter_Record);
 
    function Get_Configuration_File_Name return String;
@@ -237,6 +239,7 @@ package Configuration is
    procedure Get_Config_From_File(File_Name            : in String;
                                   Adaptable_Parameters : out Adaptable_Parameter_Record_Vectors.Vector;
                                   Config               : out Datalink_Configuration;
+                                  Protocol_Config      : out Protocol_Configuration;
                                   Error_Text           : out UnStr.Unbounded_String;
                                   Config_Valid         : out Boolean);
 
@@ -244,7 +247,11 @@ package Configuration is
 
    function To_Hex_String(Input : Unsigned_16) return String;
 
+   function To_Hex_String(Input : Unsigned_32) return String;
+
    function To_Address_Type(Text : String) return Address_Type;
    -- Convert an 8-bit, 16-bit, or 32-bit hexidecimal address string to an Address_Type --
+
+   function Address_To_String(Address : Address_Type) return String;
 
 end Configuration;

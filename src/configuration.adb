@@ -81,6 +81,22 @@ package body Configuration is
      return To_Hex_String(High_Byte) & To_Hex_String(Low_Byte);
    end To_Hex_String;
 
+   -------------------
+   -- TO_HEX_STRING --
+   -------------------
+
+   function To_Hex_String(Input : Unsigned_32) return String is
+     Highest_Byte : Unsigned_8 := Unsigned_8(Shift_Right(Input, 24));
+     High_Byte    : Unsigned_8 := Unsigned_8(Shift_Right(Input, 16));
+     Low_Byte     : Unsigned_8 := Unsigned_8(Shift_Right(Input,  8));
+     Lowest_Byte  : Unsigned_8 := Unsigned_8(Input and 16#FF#);
+   begin
+     return To_Hex_String(Highest_Byte) &
+            To_Hex_String(High_Byte) &
+            To_Hex_String(Low_Byte) &
+            To_Hex_String(Lowest_Byte);
+   end To_Hex_String;
+
    --------------------------------------
    -- DATALINK_CONFIGURATION_TO_STRING --
    --------------------------------------
@@ -109,6 +125,26 @@ package body Configuration is
             return "Data Link:  Not Configured";
       end case;
    end Datalink_Configuration_To_String;
+
+   --------------------------------------
+   -- PROTOCOL_CONFIGURATION_TO_STRING --
+   --------------------------------------
+
+   function Protocol_Configuration_To_String(Config : Protocol_Configuration) return String is
+   begin
+      case Config.Protocol is
+         when IQ =>
+            return "Protocol: IQ Source: " & Address_To_String(Config.Source) &
+                   " Destination: " & Address_To_String(Config.Destination);
+         when NVP =>
+            return "Protocol: NVP";
+         when NVP_With_Routing =>
+            return "Protocol: NVP Source: " & Address_To_String(Config.Source) &
+                   " Destination: " & Address_To_String(Config.Destination);
+         when None =>
+            return "Protocol: None";
+      end case;
+   end;
 
    ------------------------------
    -- DUMP_ADAPTABLE_PARAMETER --
@@ -951,7 +987,7 @@ package body Configuration is
    -------------------------------------
    -- GET_PROTOCOL_CONFIG_FROM_STRING --
    -------------------------------------
-   
+
    function Get_Protocol_Config_From_String(Protocol_Text : String) return Protocol_Configuration is
       Protocol : Protocol_Type := None;
    begin
@@ -1380,13 +1416,13 @@ package body Configuration is
    procedure Get_Config_From_File(File_Name            : in String;
                                   Adaptable_Parameters : out Adaptable_Parameter_Record_Vectors.Vector;
                                   Config               : out Datalink_Configuration;
+                                  Protocol_Config      : out Protocol_Configuration;
                                   Error_Text           : out UnStr.Unbounded_String;
                                   Config_Valid         : out Boolean) is
       Config_File     : File_Type;
       File_Format     : Config_File_Format;
       Line_Number     : Natural := 1;
       Config_Defined  : Boolean := False;
-      Protocol_Config : Protocol_Configuration;
    begin
 
       Config_Valid := False;
@@ -1420,20 +1456,16 @@ package body Configuration is
             return;
       end;
 
-      -- TODO Errors for everything! TODO --
+      -- TODO Errors for almost everything! TODO --
       case Protocol_Config.Protocol is
          when IQ =>
             UnStr.Append(Error_Text, "Error: Protocol type IQ not supported yet");
-            return;
          when NVP_With_Routing =>
             UnStr.Append(Error_Text, "Error: Protocol type NVP with routing not supported yet");
-            return;
          when NVP =>
-            UnStr.Append(Error_Text, "Error: Protocl type NVP not supported yet");
-            return;
+            UnStr.Append(Error_Text, "Error: Protocol type NVP not supported yet");
          when None =>
-            UnStr.Append(Error_Text, "Error: No protocol configuration defined.");
-            return;
+            UnStr.Append(Error_Text, "Error: No protocol declared.");
       end case;
 
       -- Parse configuration data from file --
@@ -1573,7 +1605,9 @@ package body Configuration is
          Error_Text := UnStr.To_Unbounded_String("Error: More than one IQ_Config_Format declaration specified for configuration file: " & File_Name);
    end Get_Config_From_File;
 
+   ---------------------
    -- TO_ADDRESS_TYPE --
+   ---------------------
 
    function To_Address_Type(Text : String) return Address_Type is
       Address : Address_Type;
@@ -1602,5 +1636,24 @@ package body Configuration is
       when others =>
          raise Conversion_Failure_Address;
    end To_Address_Type;
+
+   -----------------------
+   -- ADDRESS_TO_STRING --
+   -----------------------
+
+   function Address_To_String(Address : Address_Type) return String is
+   begin
+      case Address.Size is
+
+         when Byte_Sized =>
+            return "0x" & To_Hex_String(Unsigned_8(Address.Address));
+         when Word_Sized =>
+            return "0x" & To_Hex_String(Unsigned_16(Address.Address));
+         when Double_Word_Sized =>
+            return "0x" & To_Hex_String(Address.Address);
+         when None =>
+            return "";
+      end case;
+   end Address_To_String;
 
 end Configuration;

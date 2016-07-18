@@ -66,6 +66,7 @@ function Iq return Integer is
 
    Adaptable_Parameters      : Adaptable_Parameter_Record_Vectors.Vector;
    Config                    : Datalink_Configuration;
+   Protocol                  : Protocol_Configuration;
    Config_Errors             : UnStr.Unbounded_String;
    Config_Valid              : Boolean;
 
@@ -132,6 +133,7 @@ begin
    Get_Config_From_File(Config_File_Name,
                         Adaptable_Parameters,
                         Config,
+                        Protocol,
                         Config_Errors,
                         Config_Valid);
 
@@ -148,16 +150,14 @@ begin
    Gtk_New(Connection_Config_Label);
    Gtk_New(Protocol_Label);
    Set_Label(Connection_Config_Label, Datalink_Configuration_To_String(Config));
-   Set_Label(Protocol_Label, "Protocol Placeholder");
+   Set_Label(Protocol_Label, Protocol_Configuration_To_String(Protocol));
    Pack_Start(Status_Bar_Box, Connection_Config_Label, False, False, Status_Bar_Pad_Pixels);
    Pack_End(Status_Bar_Box, Protocol_Label, False, False, Status_Bar_Pad_Pixels);
 
    Main_Window.Set_Default_Size(400, 400);
 
-   if Config_Valid then
-      Control_Panel.Create(Main_Window, Adaptable_Parameters);
-      Add1(Main_Panel_HPane, Control_Panel.View);
-   end if;
+   Control_Panel.Create(Main_Window, Adaptable_Parameters);
+   Add1(Main_Panel_HPane, Control_Panel.View);
 
    Add2(Main_Panel_HPane, Right_Side_Box);
 
