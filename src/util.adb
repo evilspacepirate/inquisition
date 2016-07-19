@@ -73,4 +73,63 @@ package body Util is
      return Result;
    end Split_String;
 
+   ------------
+   -- TO_HEX --
+   ------------
+
+   function To_Hex(Input : Unsigned_8) return String is
+      Hex    : String(1 .. 6);
+      Output : String(1 .. 2);
+      Start  : Integer;
+      Length : Integer;
+   begin
+      Unsigned_8_IO.Put(To => Hex, Item => Input, Base => 16);
+      for i in 1 .. 6 loop
+         if Hex(i) = '#' then
+            Start := i + 1;
+            exit;
+         end if;
+      end loop;
+      Output := "00";
+      Length := 6 - Start;
+      Output(3 - Length .. 2) := Hex(6 - Length .. 5);
+      return Output;
+   end to_hex;
+   
+   -------------
+   -- PUT_HEX --
+   -------------
+   
+   procedure Put_Hex(Input : Unsigned_8) is
+      Hex    : String(1 .. 6);
+      Output : String(1 .. 2);
+      Start  : Integer;
+      Length : Integer;
+   begin
+     Unsigned_8_IO.Put(To => Hex, Item => Input, Base => 16);
+     for Index in 1 .. 6 loop
+        if Hex(Index) = '#' then
+           Start := Index + 1;
+           exit;
+        end if;
+     end loop;
+     Output := "00";
+     Length := 6 - Start;
+     Output(3 - Length .. 2) := Hex(6 - Length .. 5);
+     Put(Output);
+   end put_hex;
+
+   ----------
+   -- DUMP --
+   ----------
+
+   procedure Dump(Input : Unsigned_8_Array) is
+   begin
+      Put(Natural'Image(Input'Length) & " bytes: ");
+      for Index in Input'Range loop
+         Put_Hex(Input(Index));
+         Put(" ");
+      end loop;
+   end dump;
+
 end Util;

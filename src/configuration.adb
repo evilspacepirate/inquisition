@@ -27,6 +27,7 @@ with Ada.Strings.Unbounded;
 with Ada.Directories;                   use Ada.Directories;
 with Ada.Exceptions;                    use Ada.Exceptions;
 with Interfaces;                        use Interfaces;
+with Primatives;                        use Primatives;
 with Util;                              use Util;
 
 package body Configuration is
@@ -42,6 +43,7 @@ package body Configuration is
    Configuration_Type_Tag        : constant String    := "IQ_Config_Format";
    Sampling_Tag                  : constant String    := "Sampling:";
    Sample_Period_Tag             : constant String    := "Sample Period:";
+   Display_As_Tag                : constant String    := "Display As:";
    Default_Set_Value_Tag         : constant String    := "Default Set Value:";
    NVP_Protocol_Tag              : constant String    := "Protocol NVP";
    NVP_With_Routing_Protocol_Tag : constant String    := "Protocol NVP Routing";
@@ -1074,7 +1076,7 @@ package body Configuration is
             end;
          when NVP | None =>
             declare
-               Configuration : Protocol_Configuration(Protocol);
+               Configuration : Protocol_Configuration(None);
             begin
                return Configuration;
             end;
@@ -1143,7 +1145,7 @@ package body Configuration is
                     raise Conversion_Failure_Default_Set_Value;
               end;
            end;
-         when 6 =>
+         when 7 =>
            -- Expect adaptable parameter with mode: Read Only (R) --
            declare
               Name_String             : String  := Trim_Outside_Whitespace(UnStr.To_String(Tokens.Element(0)));
@@ -1152,6 +1154,7 @@ package body Configuration is
               Mode_String             : String  := Trim_Outside_Whitespace(UnStr.To_String(Tokens.Element(3)));
               Is_Sampling_Defined     : Boolean := False;
               Sampling_Period_Defined : Boolean := False;
+              Display_As_Type_Defined : Boolean := False;
            begin
 
               -- Decode Read Write Mode --
@@ -1178,10 +1181,19 @@ package body Configuration is
                     raise Conversion_Failure_UID;
               end;
 
-              for Token_Index in Natural range 4 .. 5 loop
+              for Token_Index in Natural range 4 .. 6 loop
                  declare
                     Token : String := Trim_Outside_Whitespace(UnStr.To_String(Tokens.Element(Token_Index)));
                  begin
+                    begin
+                       if Token(Token'First .. Token'First + Display_As_Tag'Length - 1) = Display_As_Tag then
+                          Parameter.Display_As    := Display_As_Type'Value(Token(Token'First + Display_As_Tag'Length .. Token'Last));
+                          Display_As_Type_Defined := True;
+                       end if;
+                    exception
+                       when Constraint_Error =>
+                          null;
+                    end;
                     begin
                        if Token(Token'First .. Token'First + Sampling_Tag'Length - 1) = Sampling_Tag then
                           Parameter.Is_Sampling := Boolean'Value(Token(Token'First + Sampling_Tag'Length .. Token'Last));
@@ -1217,8 +1229,12 @@ package body Configuration is
               if not Sampling_Period_Defined then
                  raise Parameter_Missing_Sampling_Period;
               end if;
+
+              if not Display_As_Type_Defined then
+                 raise Parameter_Missing_Display_As;
+              end if;
            end;
-         when 7 =>
+         when 8 =>
            -- Expect adaptable parameter with mode: Read/Write (RW) --
            declare
               Name_String               : String  := Trim_Outside_Whitespace(UnStr.To_String(Tokens.Element(0)));
@@ -1228,6 +1244,7 @@ package body Configuration is
               Default_Set_Value_Defined : Boolean := False;
               Is_Sampling_Defined       : Boolean := False;
               Sampling_Period_Defined   : Boolean := False;
+              Display_As_Type_Defined   : Boolean := False;
            begin
               
               -- Decode Read Write Mode --
@@ -1254,10 +1271,19 @@ package body Configuration is
                     raise Conversion_Failure_UID;
               end;
 
-              for Token_Index in Natural range 4 .. 6 loop
+              for Token_Index in Natural range 4 .. 7 loop
                  declare
                     Token : String := Trim_Outside_Whitespace(UnStr.To_String(Tokens.Element(Token_Index)));
                  begin
+                    begin
+                       if Token(Token'First .. Token'First + Display_As_Tag'Length - 1) = Display_As_Tag then
+                          Parameter.Display_As    := Display_As_Type'Value(Token(Token'First + Display_As_Tag'Length .. Token'Last));
+                          Display_As_Type_Defined := True;
+                       end if;
+                    exception
+                       when Constraint_Error =>
+                          null;
+                    end;
                     begin
                        if Token(Token'First .. Token'First + Sampling_Tag'Length - 1) = Sampling_Tag then
                           begin
@@ -1313,10 +1339,16 @@ package body Configuration is
               if not Default_Set_Value_Defined then
                  raise Parameter_Missing_Default_Set_Value;
               end if;
+
+              if not Display_As_Type_Defined then
+                 raise Parameter_Missing_Display_As;
+              end if;
            end;
+         when 0 =>
+           return;
          when others =>
            -- Malformed parameter record string --
-           return;
+           raise Syntax_Error;
       end case;
 
       Parameter_Valid := True;
@@ -1459,13 +1491,13 @@ package body Configuration is
       -- TODO Errors for almost everything! TODO --
       case Protocol_Config.Protocol is
          when IQ =>
-            UnStr.Append(Error_Text, "Error: Protocol type IQ not supported yet");
+            UnStr.Append(Error_Text, "Error: Protocol type IQ not supported yet" & CRLF);
          when NVP_With_Routing =>
-            UnStr.Append(Error_Text, "Error: Protocol type NVP with routing not supported yet");
+            UnStr.Append(Error_Text, "Error: Protocol type NVP with routing not supported yet" & CRLF);
          when NVP =>
-            UnStr.Append(Error_Text, "Error: Protocol type NVP not supported yet");
+            UnStr.Append(Error_Text, "Error: Protocol type NVP not supported yet" & CRLF);
          when None =>
-            UnStr.Append(Error_Text, "Error: No protocol declared.");
+            UnStr.Append(Error_Text, "Error: No protocol declared." & CRLF);
       end case;
 
       -- Parse configuration data from file --
@@ -1573,6 +1605,8 @@ package body Configuration is
                      UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Adaptable parameter declaration missing 'UID' field. Parameter not added to control panel." & CRLF));
                   when Parameter_Missing_Sampling_Period =>
                      UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Readable adaptable parameter declaration missing '" & Sample_Period_Tag & "' field. Parameter not added to control panel." & CRLF));
+                  when Parameter_Missing_Display_As =>
+                     UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Readable adaptable parameter declaration missing '" & Display_As_Tag & "' field. Parameter not added to control panel." & CRLF));
                   when Parameter_Missing_Is_Sampling =>
                      UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Readable adaptable parameter declaration missing '" & Sampling_Tag & "' field. Parameter not added to control panel." & CRLF));
                   when Conversion_Failure_Is_Sampling =>
@@ -1597,12 +1631,12 @@ package body Configuration is
       Close(Config_File);
 
       if Config_Valid = False then
-         Error_Text := UnStr.To_Unbounded_String("Error: Missing Data_link configuration declaration in configuration file: " & File_Name);
+         Error_Text := UnStr.To_Unbounded_String("Error: Missing Data_link configuration declaration in configuration file: " & File_Name & CRLF);
       end if;
 
    exception
       when Too_Many_File_Formats_Specified =>
-         Error_Text := UnStr.To_Unbounded_String("Error: More than one IQ_Config_Format declaration specified for configuration file: " & File_Name);
+         Error_Text := UnStr.To_Unbounded_String("Error: More than one IQ_Config_Format declaration specified for configuration file: " & File_Name & CRLF);
    end Get_Config_From_File;
 
    ---------------------

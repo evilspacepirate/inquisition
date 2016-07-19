@@ -25,15 +25,12 @@ with Ada.Containers.Indefinite_Vectors; use Ada.Containers;
 with Ada.Strings.Fixed;
 with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
 with Interfaces;                        use Interfaces;
+with Primatives;                        use Primatives;
 with Util;                              use Util;
 
 package Configuration is
 
    use Ada.Characters;
-
-   type Byte is mod 2**8;
-   type Word is mod 2**16;
-   type Double_Word is mod 2**32;
    
    Too_Many_File_Formats_Specified            : exception;
    Syntax_Error                               : exception;
@@ -41,12 +38,14 @@ package Configuration is
    Parameter_Missing_UID                      : exception;
    Parameter_Missing_Sampling_Period          : exception;
    Parameter_Missing_Is_Sampling              : exception;
+   Parameter_Missing_Display_As               : exception;
    Conversion_Failure                         : exception;
    Conversion_Failure_UID                     : exception;
    Conversion_Failure_Default_Set_Value       : exception;
    Conversion_Failure_Is_Sampling             : exception;
    Conversion_Failure_Read_Write_Mode         : exception;
    Conversion_Failure_Sample_Period           : exception;
+   Conversion_Failure_Display_As_Type         : exception;
    Conversion_Failure_Stop_Bits               : exception;
    Conversion_Failure_Baud                    : exception;
    Conversion_Failure_Device_Name             : exception;
@@ -60,6 +59,7 @@ package Configuration is
    NVP_Routing_Declaration_Syntax_Error       : exception;
    Protocol_Declaration_Address_Size_Mismatch : exception;
    
+   type Display_As_Type is (IEEE754, Singed, Unsigned, Hex);
    type Protocol_Type is (NVP, NVP_With_Routing, IQ, None);
    type Address_Size_Type is (Byte_Sized, Word_Sized, Double_Word_Sized, None);
    type Parity_Type is (Even, Odd, None);
@@ -111,6 +111,7 @@ package Configuration is
       Is_Sampling         : Boolean;
       Is_Readable         : Boolean;
       Is_Writable         : Boolean;
+      Display_As          : Display_As_Type;
       Sample_Period       : UnStr.Unbounded_String;
    end record;
 

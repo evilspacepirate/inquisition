@@ -1,6 +1,6 @@
 -----------------------------------------------------------------
 --                                                             --
--- UTIL Specification                                          --
+-- PRIMATIVES Specification                                    --
 --                                                             --
 -- Copyright (c) 2016, John Leimon                             --
 --                                                             --
@@ -22,22 +22,14 @@
 -----------------------------------------------------------------
 with Ada.Containers.Indefinite_Vectors; use Ada.Containers;
 with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
-with Ada.Text_IO;                       use Ada.Text_IO;
 with Interfaces;                        use Interfaces;
-with Primatives;                        use Primatives;
 
-package Util is
-   
-   package Unsigned_8_IO is new Ada.Text_IO.Modular_IO(Unsigned_8);
+package Primatives is
 
-   function Split_String(Text : String; Seperators : String) return String_Vectors.Vector;
+   type Unsigned_8_Array is array (Natural range <>) of Unsigned_8;
 
-   function To_Hex(Input : Unsigned_8) return String;
+   package UnStr renames Ada.Strings.Unbounded;
+   package String_Vectors is new Indefinite_Vectors (Natural, UnStr.Unbounded_String);
+   package Unsigned_16_Vectors is new Indefinite_Vectors (Natural, Unsigned_16);
 
-   procedure Put_Hex(Input : Unsigned_8);
-   -- Send value to STDOUT in hexidecimal --
-
-   procedure Dump(Input : Unsigned_8_Array);
-   -- Send a byte array to STDOUT as hex --
-
-end Util;
+end Primatives;

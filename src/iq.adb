@@ -42,13 +42,12 @@ with Gtk.Label;             use Gtk.Label;
 with Gtk.Main;
 with Gtk.Paned;             use Gtk.Paned;
 with Gtk.Window;            use Gtk.Window;
+with Primatives;            use Primatives;
 with Raw_Data_Panel;
 with System_Messages_Panel;
 with Util;                  use Util;
 
 function Iq return Integer is
-
-   use Adaptable_Parameter_Record_Vectors;
 
    package Basic_Callback is new Gtk.Handlers.Callback(GObject_Record);
    package Return_Callback is new Gtk.Handlers.Return_Callback(GObject_Record, Boolean);
