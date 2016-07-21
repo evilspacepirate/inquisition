@@ -187,9 +187,7 @@ package body NVP_Protocol is
       Packet : Unsigned_8_Array(1 .. Natural(Length(Parameter_IDs) * 2));
    begin
 
-      put_line("len = " & natural'image(natural(Length(Parameter_IDs))));
       for Index in Natural range 0 .. Natural(Length(Parameter_IDs)) - 1 loop
-      put_line("index -> " & natural'image(index));
          Packet(2 * Index + 1) := Unsigned_8(Unsigned_16(Parameter_IDs.Element(Index)) and 16#FF#);
          Packet(2 * Index + 2) := Unsigned_8(Shift_Right(Unsigned_16(Parameter_IDs.Element(Index)), 8));
       end loop;

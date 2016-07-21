@@ -23,6 +23,7 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
+with Arbiter;
 with Ada.Text_IO;           use Ada.Text_IO;
 with Configuration;         use Configuration;
 with Control_Panel;

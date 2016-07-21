@@ -1,6 +1,6 @@
 -----------------------------------------------------------------
 --                                                             --
--- PRIMATIVES Specification                                    --
+-- ARBITER Specification                                       --
 --                                                             --
 -- Copyright (c) 2016, John Leimon                             --
 --                                                             --
@@ -21,21 +21,49 @@
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
 with Ada.Containers.Indefinite_Vectors; use Ada.Containers;
-with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
+with Configuration;                     use Configuration;
 with Interfaces;                        use Interfaces;
+with Primatives;                        use Primatives;
 
-package Primatives is
+package Arbiter is
 
-   type Unsigned_8_Array is array (Natural range <>) of Unsigned_8;
+   Error_Opening_Device           : exception;
+   Communications_Error           : exception;
+   Invalid_Protocol               : exception;
+   Invalid_DataLink_Config        : exception;
+   Connection_Already_Established : exception;
+   Connection_Not_Established     : exception;
 
-   type Name_Value_Pair is record
-      Name  : Unsigned_16;
-      Value : Unsigned_32;
-   end record;
+   protected type Values_Buffer is
+      procedure Add(Item : in Name_Value_Pair);
+      procedure Remove(Items : out Name_Value_Pair_Vectors.Vector);
+   private
+      Elements : Name_Value_Pair_Vectors.Vector;
+   end Values_Buffer;
+   
+   protected type Requests_Buffer is
+      procedure Add(Item : in Unsigned_16);
+      procedure Remove(Items : out Unsigned_16_Vectors.Vector);
+   private
+      Elements : Unsigned_16_Vectors.Vector;
+   end Requests_Buffer;
 
-   package UnStr renames Ada.Strings.Unbounded;
-   package String_Vectors is new Indefinite_Vectors (Natural, UnStr.Unbounded_String);
-   package Unsigned_16_Vectors is new Indefinite_Vectors (Natural, Unsigned_16);
-   package Name_Value_Pair_Vectors is new Indefinite_Vectors (Natural, Name_Value_Pair);
+   procedure Connect(Protocol : Protocol_Type;
+                     Config   : Datalink_Configuration);
 
-end Primatives;
+   procedure Disconnect;
+
+   procedure Set_Value(Parameter_ID : Unsigned_16;
+                       Value        : Unsigned_32);
+
+   procedure Request_Values(Parameter_IDs : Unsigned_16_Vectors.Vector);
+
+   procedure Shutdown;
+   -- Clean up any loose ends --
+
+   procedure Send_Data(Data : Unsigned_8_Array);
+
+   Requests    : Requests_Buffer;
+   Set_Values  : Values_Buffer;
+
+end Arbiter;

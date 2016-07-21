@@ -78,7 +78,7 @@ package USBHID is
 
    function Read_Timeout (Dev          : System.Address;
                           Data         : System.Address;
-                          Length       : .Size_t;
+                          Length       : Size_t;
                           Milliseconds : Int) return Int;
    -- Read an Input report from a HID device with timeout.         --
    -- Return  N: 'N' bytes read                                    --
