@@ -55,10 +55,10 @@ package NVP_Protocol is
                                      Source       : Unsigned_8;
                                      Destination  : Unsigned_8) return Unsigned_8_Array;
    
-   function Create_Get_Value_Packet (Parameter_IDs : Unsigned_16_Vectors.Vector) return Unsigned_8_Array;
+   function Create_Request_Value_Packet (Parameter_IDs : Unsigned_16_Vectors.Vector) return Unsigned_8_Array;
    
-   function Create_Get_Value_Packet (Parameter_IDs : Unsigned_16_Vectors.Vector;
-                                     Source        : Unsigned_8;
-                                     Destination   : Unsigned_8) return Unsigned_8_Array;
+   function Create_Request_Value_Packet (Parameter_IDs : Unsigned_16_Vectors.Vector;
+                                         Source        : Unsigned_8;
+                                         Destination   : Unsigned_8) return Unsigned_8_Array;
 
 end NVP_Protocol;

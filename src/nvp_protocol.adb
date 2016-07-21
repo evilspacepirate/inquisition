@@ -178,11 +178,11 @@ package body NVP_Protocol is
                                    Packet);
    end;
 
-   -----------------------------
-   -- CREATE_GET_VALUE_PACKET --
-   -----------------------------
+   ---------------------------------
+   -- CREATE_REQUEST_VALUE_PACKET --
+   ---------------------------------
    
-   function Create_Get_Value_Packet (Parameter_IDs : Unsigned_16_Vectors.Vector) return Unsigned_8_Array is
+   function Create_Request_Value_Packet (Parameter_IDs : Unsigned_16_Vectors.Vector) return Unsigned_8_Array is
       use Unsigned_16_Vectors;
       Packet : Unsigned_8_Array(1 .. Natural(Length(Parameter_IDs) * 2));
    begin
@@ -196,15 +196,15 @@ package body NVP_Protocol is
 
       return Envelope_Message_Data(Read_Data_ID, Packet);
 
-   end Create_Get_Value_Packet;
+   end Create_Request_Value_Packet;
 
    -----------------------------
-   -- CREATE_GET_VALUE_PACKET --
+   -- CREATE_REQUEST_VALUE_PACKET --
    -----------------------------
    
-   function Create_Get_Value_Packet (Parameter_IDs : Unsigned_16_Vectors.Vector;
-                                     Source        : Unsigned_8;
-                                     Destination   : Unsigned_8) return Unsigned_8_Array is
+   function Create_Request_Value_Packet (Parameter_IDs : Unsigned_16_Vectors.Vector;
+                                         Source        : Unsigned_8;
+                                         Destination   : Unsigned_8) return Unsigned_8_Array is
       use Unsigned_16_Vectors;
       Packet : Unsigned_8_Array(1 .. Natural(Unsigned_16_Vectors.Length(Parameter_IDs) * 2));
    begin
@@ -218,6 +218,6 @@ package body NVP_Protocol is
                                    Source,
                                    Destination,
                                    Packet);
-   end Create_Get_Value_Packet;
+   end Create_Request_Value_Packet;
 
 end NVP_Protocol;
