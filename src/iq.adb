@@ -23,7 +23,7 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
-with Arbiter;
+with Device;
 with Ada.Text_IO;           use Ada.Text_IO;
 with Configuration;         use Configuration;
 with Control_Panel;
@@ -39,12 +39,13 @@ with Gtk.Arguments;         use Gtk.Arguments;
 with Gtk.Box;               use Gtk.Box;
 with Gtk.Enums;             use Gtk.Enums;
 with Gtk.Handlers;          use Gtk.Handlers;
-with Gtk.Label;             use Gtk.Label;
 with Gtk.Main;
 with Gtk.Paned;             use Gtk.Paned;
 with Gtk.Window;            use Gtk.Window;
+with Nexus;
 with Primatives;            use Primatives;
 with Raw_Data_Panel;
+with Status_Bar_Panel;
 with System_Messages_Panel;
 with Util;                  use Util;
 
@@ -53,22 +54,11 @@ function Iq return Integer is
    package Basic_Callback is new Gtk.Handlers.Callback(GObject_Record);
    package Return_Callback is new Gtk.Handlers.Return_Callback(GObject_Record, Boolean);
 
-   Status_Bar_Pad_Pixels     : constant := 7;
-
    Main_Window               : Gtk_Window;
    Main_Window_Box           : Gtk_VBox;
    Main_Window_VPane         : Gtk_VPaned;
    Main_Panel_HPane          : Gtk_HPaned;
-   Status_Bar_Box            : Gtk_HBox;
    Right_Side_Box            : Gtk_VBox;
-   Connection_Config_Label   : Gtk_Label;
-   Protocol_Label            : Gtk_Label;
-
-   Adaptable_Parameters      : Adaptable_Parameter_Record_Vectors.Vector;
-   Config                    : Datalink_Configuration;
-   Protocol                  : Protocol_Configuration;
-   Config_Errors             : UnStr.Unbounded_String;
-   Config_Valid              : Boolean;
 
    Main_Window_Height        : GInt;
    System_Messages_Area_Size : GInt;
@@ -130,13 +120,6 @@ function Iq return Integer is
 
 begin
 
-   Get_Config_From_File(Config_File_Name,
-                        Adaptable_Parameters,
-                        Config,
-                        Protocol,
-                        Config_Errors,
-                        Config_Valid);
-
    Gtk.Main.Init;
 
    Gtk_New(Main_Window);
@@ -145,25 +128,16 @@ begin
    Gtk_New_VBox(Main_Window_Box);
    Gtk_New_VBox(Right_Side_Box);
 
-   -- Create status bar --
-   Gtk_New_HBox(Status_Bar_Box);
-   Gtk_New(Connection_Config_Label);
-   Gtk_New(Protocol_Label);
-   Set_Label(Connection_Config_Label, Datalink_Configuration_To_String(Config));
-   Set_Label(Protocol_Label, Protocol_Configuration_To_String(Protocol));
-   Pack_Start(Status_Bar_Box, Connection_Config_Label, False, False, Status_Bar_Pad_Pixels);
-   Pack_End(Status_Bar_Box, Protocol_Label, False, False, Status_Bar_Pad_Pixels);
-
    Main_Window.Set_Default_Size(400, 400);
 
-   Control_Panel.Create(Main_Window, Adaptable_Parameters);
-   Add1(Main_Panel_HPane, Control_Panel.View);
-
-   Add2(Main_Panel_HPane, Right_Side_Box);
-
+   Control_Panel.Create(Main_Window);
+   Status_Bar_Panel.Create;
    Raw_Data_Panel.Create;
    Configuration_Panel.Create;
    System_Messages_Panel.Create;
+
+   Add1(Main_Panel_HPane, Control_Panel.View);
+   Add2(Main_Panel_HPane, Right_Side_Box);
 
    Pack_Start(Right_Side_Box, Configuration_Panel.Box, False, False);
    Pack_End  (Right_Side_Box, Raw_Data_Panel.Box,      True,  True);
@@ -172,12 +146,12 @@ begin
    Add2(Main_Window_VPane, System_Messages_Panel.Box);
 
    Add(Main_Window_Box, Main_Window_VPane);
-   Add(Main_Window_Box, Status_Bar_Box);
+   Add(Main_Window_Box, Status_Bar_Panel.Box);
 
    Add(Main_Window, Main_Window_Box);
 
    Set_Child_Packing(Main_Window_Box,
-                     Status_Bar_Box,
+                     Status_Bar_Panel.Box,
                      Expand    => false,
                      Fill      => false,
                      Padding   => 0,
@@ -187,12 +161,7 @@ begin
    Return_Callback.Connect(Main_Window, "configure_event", On_Main_Window_Size_Change'access);
    Basic_Callback.Connect(Main_Window, "size_allocate", On_Main_Window_Pane_Size_Change'access);
 
-   if Config_File_Name /= "" then
-      System_Messages_Panel.Append_Message("Loading configuration from " & Config_File_Name & CRLF);
-      System_Messages_Panel.Append_Error(UnStr.To_String(Config_Errors));
-   else
-      System_Messages_Panel.Append_Message("No configuration file found in current directory.");
-   end if;
+   Nexus.Initialize;
 
    Main_Window.Show_All;
    Gtk.Main.Main;

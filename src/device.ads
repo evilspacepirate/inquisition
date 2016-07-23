@@ -1,6 +1,6 @@
 -----------------------------------------------------------------
 --                                                             --
--- ARBITER Specification                                       --
+-- DEVICE Specification                                        --
 --                                                             --
 -- Copyright (c) 2016, John Leimon                             --
 --                                                             --
@@ -25,7 +25,7 @@ with Configuration;                     use Configuration;
 with Interfaces;                        use Interfaces;
 with Primatives;                        use Primatives;
 
-package Arbiter is
+package Device is
 
    Error_Opening_Device           : exception;
    Communications_Error           : exception;
@@ -34,13 +34,15 @@ package Arbiter is
    Connection_Already_Established : exception;
    Connection_Not_Established     : exception;
 
+   type Connection_State_Type is (Connected, Not_Connected);
+
    protected type Values_Buffer is
       procedure Add(Item : in Name_Value_Pair);
       procedure Remove(Items : out Name_Value_Pair_Vectors.Vector);
    private
       Elements : Name_Value_Pair_Vectors.Vector;
    end Values_Buffer;
-   
+
    protected type Requests_Buffer is
       procedure Add(Item : in Unsigned_16);
       procedure Remove(Items : out Unsigned_16_Vectors.Vector);
@@ -63,7 +65,9 @@ package Arbiter is
 
    procedure Send_Data(Data : Unsigned_8_Array);
 
+   function Connected return Boolean;
+
    Requests    : Requests_Buffer;
    Set_Values  : Values_Buffer;
 
-end Arbiter;
+end Device;

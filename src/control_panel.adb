@@ -76,12 +76,8 @@ package body Control_Panel is
    -- CREATE --
    ------------
 
-   procedure Create (Main_Window : in out Gtk_Window;
-                     Parameters  : in Adaptable_Parameter_Record_Vectors.Vector) is
-      use Adaptable_Parameter_Record_Vectors;
+   procedure Create (Main_Window : in out Gtk_Window) is
       Column_Number : GInt;
-      Iter          : Gtk_Tree_Iter;
-      Config        : Datalink_Configuration;
    begin
 
       -- Save a handle to the main window so we can determine the --
@@ -110,47 +106,6 @@ package body Control_Panel is
                       Data_Request_Period_Is_Editable_ID => GType_Boolean,
                       Is_Logged_ID                       => GType_Boolean,
                       Is_Logged_Is_Checkable_ID          => GType_Boolean));
-
-      Iter := Null_Iter;
-
-      for Index in Natural range 0 .. Natural(Length(Parameters)) - 1 loop
-      -- TODO Build model using system configuration file TODO --
-
-         Append(Store.all'access, Iter);
-         Set(Store.all'access, Iter, Name_ID,  UnStr.To_String(Parameters.Element(Index).Friendly_Name));
-         Set(Store.all'access, Iter, Units_ID, UnStr.To_String(Parameters.Element(Index).Units_Name));
-
-         if Parameters.Element(Index).Is_Readable then
-            -- Readable --
-            Set(Store.all'access, Iter, Value_ID,                           "-");
-            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID,           False);
-            Set(Store.all'access, Iter, Is_Requesting_Data_ID,              Parameters.Element(Index).Is_Sampling);
-            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, True);
-            Set(Store.all'access, Iter, Data_Request_Period_ID,             UnStr.To_String(Parameters.Element(Index).Sample_Period));
-            Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, True);
-            Set(Store.all'access, Iter, Is_Logged_ID,                       False);
-            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          True);
-         else
-            -- Not Readable --
-            Set(Store.all'access, Iter, Is_Requesting_Data_ID,              False);
-            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, False);
-            Set(Store.all'access, Iter, Data_Request_Period_ID,             "");
-            Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, False);
-            Set(Store.all'access, Iter, Is_Logged_ID,                       False);
-            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          False);
-         end if;
-
-         if Parameters.Element(Index).Is_Writable then
-            -- Writable --
-            Set(Store.all'access, Iter, Set_Button_ID,            Button_Unclicked_Pix);
-            Set(Store.all'access, Iter, Set_Value_ID,             Unsigned_32'image(Parameters.Element(Index).Default_Set_Value));
-            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, True);
-         else
-            -- Not Writable --
-            Set(Store.all'access, Iter, Set_Value_ID,             "");
-            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, False);
-         end if;
-      end loop;
 
       -- Attach model to view --
       
@@ -258,6 +213,53 @@ package body Control_Panel is
       Return_Callbacks.Connect(View, "button-release-event", Set_Button_Released'access);
 
    end Create;
+
+   ------------------------------
+   -- SET_ADAPTABLE_PARAMETERS --
+   ------------------------------
+
+   procedure Set_Adaptable_Parameters(Parameters : in Adaptable_Parameter_Record_Vectors.Vector) is
+      use Adaptable_Parameter_Record_Vectors;
+      Iter : Gtk_Tree_Iter := Null_Iter;
+   begin
+      for Index in Natural range 0 .. Natural(Length(Parameters)) - 1 loop
+
+         Append(Store.all'access, Iter);
+         Set(Store.all'access, Iter, Name_ID,  UnStr.To_String(Parameters.Element(Index).Friendly_Name));
+         Set(Store.all'access, Iter, Units_ID, UnStr.To_String(Parameters.Element(Index).Units_Name));
+
+         if Parameters.Element(Index).Is_Readable then
+            -- Readable --
+            Set(Store.all'access, Iter, Value_ID,                           "-");
+            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID,           False);
+            Set(Store.all'access, Iter, Is_Requesting_Data_ID,              Parameters.Element(Index).Is_Sampling);
+            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, True);
+            Set(Store.all'access, Iter, Data_Request_Period_ID,             UnStr.To_String(Parameters.Element(Index).Sample_Period));
+            Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, True);
+            Set(Store.all'access, Iter, Is_Logged_ID,                       False);
+            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          True);
+         else
+            -- Not Readable --
+            Set(Store.all'access, Iter, Is_Requesting_Data_ID,              False);
+            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, False);
+            Set(Store.all'access, Iter, Data_Request_Period_ID,             "");
+            Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, False);
+            Set(Store.all'access, Iter, Is_Logged_ID,                       False);
+            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          False);
+         end if;
+
+         if Parameters.Element(Index).Is_Writable then
+            -- Writable --
+            Set(Store.all'access, Iter, Set_Button_ID,            Button_Unclicked_Pix);
+            Set(Store.all'access, Iter, Set_Value_ID,             Unsigned_32'image(Parameters.Element(Index).Default_Set_Value));
+            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, True);
+         else
+            -- Not Writable --
+            Set(Store.all'access, Iter, Set_Value_ID,             "");
+            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, False);
+         end if;
+      end loop;
+   end Set_Adaptable_Parameters;
 
    ------------------------------
    -- LOGGING_CHECKBOX_TOGGLED --

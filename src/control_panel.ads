@@ -30,9 +30,9 @@ package Control_Panel is
 
    View : Gtk_Tree_View;
 
-   procedure Create(Main_Window : in out Gtk_Window;
-                    Parameters  : in Adaptable_Parameter_Record_Vectors.Vector);
-   -- Builds up the control panel treeview widget --
+   procedure Create(Main_Window : in out Gtk_Window);
+
+   procedure Set_Adaptable_Parameters(Parameters : in Adaptable_Parameter_Record_Vectors.Vector);
 
    private
 

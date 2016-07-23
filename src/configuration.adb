@@ -1074,7 +1074,13 @@ package body Configuration is
                when Conversion_Failure_Address =>
                   raise NVP_Routing_Declaration_Syntax_Error;
             end;
-         when NVP | None =>
+         when NVP =>
+            declare
+               Configuration : Protocol_Configuration(NVP);
+            begin
+               return Configuration;
+            end;
+         when None =>
             declare
                Configuration : Protocol_Configuration(None);
             begin
@@ -1447,17 +1453,14 @@ package body Configuration is
 
    procedure Get_Config_From_File(File_Name            : in String;
                                   Adaptable_Parameters : out Adaptable_Parameter_Record_Vectors.Vector;
-                                  Config               : out Datalink_Configuration;
-                                  Protocol_Config      : out Protocol_Configuration;
-                                  Error_Text           : out UnStr.Unbounded_String;
-                                  Config_Valid         : out Boolean) is
+                                  Datalink             : out Datalink_Configuration;
+                                  Protocol             : out Protocol_Configuration;
+                                  Error_Text           : out UnStr.Unbounded_String) is
       Config_File     : File_Type;
       File_Format     : Config_File_Format;
       Line_Number     : Natural := 1;
       Config_Defined  : Boolean := False;
    begin
-
-      Config_Valid := False;
 
       -- Identify configuration file format --
 
@@ -1471,7 +1474,7 @@ package body Configuration is
       -- Identify protocol configuration --
 
       begin
-         Protocol_Config := Get_Protocol_Config_From_File(File_Name);
+         Protocol := Get_Protocol_Config_From_File(File_Name);
       exception
          when Protocol_Declaration_Address_Size_Mismatch =>
             UnStr.Append(Error_Text, "Error: Protocol declaration address sizes must be the same size");
@@ -1489,7 +1492,7 @@ package body Configuration is
       end;
 
       -- TODO Errors for almost everything! TODO --
-      case Protocol_Config.Protocol is
+      case Protocol.Protocol is
          when IQ =>
             UnStr.Append(Error_Text, "Error: Protocol type IQ not supported yet" & CRLF);
          when NVP_With_Routing =>
@@ -1521,67 +1524,55 @@ package body Configuration is
                   if Line_Config.Datalink /= None then
                      if Config_Defined then
                         Close(Config_File);
-                        Config_Valid := False;
                         UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: More than one Datalink declaration specified for configuration file: " & File_Name & CRLF));
                         UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Second declaration found on line:" & Natural'image(Line_Number) & CRLF));
                         return;
                      else
                         -- Valid datalink configuration found --
-                        Config         := Line_Config;
+                        Datalink       := Line_Config;
                         Config_Defined := True;
-                        Config_Valid   := True;
                         goto Next_Line;
                      end if;
                   end if;
                exception
                   when Syntax_Error =>
                      Close(Config_File);
-                     Config_Valid := False;
                      UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Syntax error" & CRLF));
                      return;
                   when Conversion_Failure =>
                      Close(Config_File);
-                     Config_Valid := False;
                      UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure" & File_Name & CRLF));
                      return;
                   when Conversion_Failure_Stop_Bits =>
                      Close(Config_File);
-                     Config_Valid := False;
                      UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for Stop Bits field" & CRLF));
                      return;
                   when Conversion_Failure_Baud =>
                      Close(Config_File);
-                     Config_Valid := False;
                      UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for Baud Rate field" & CRLF));
                      return;
                   when Conversion_Failure_Device_Name =>
                      Close(Config_File);
-                     Config_Valid := False;
                      UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for Device Name" & CRLF));
                      return;
                   when Conversion_Failure_Parity =>
                      Close(Config_File);
-                     Config_Valid := False;
                      UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for Parity" & CRLF));
                      return;
                   when Conversion_Failure_IPv4_Address =>
                      Close(Config_File);
-                     Config_Valid := False;
                      UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for IPv4 Address" & CRLF));
                      return;
                   when Conversion_Failure_TCP_Port =>
                      Close(Config_File);
-                     Config_Valid := False;
                      UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for TCP Port" & CRLF));
                      return;
                   when Conversion_Failure_Vendor_ID =>
                      Close(Config_File);
-                     Config_Valid := False;
                      UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for USB Vendor ID" & CRLF));
                      return;
                   when Conversion_Failure_Product_ID =>
                      Close(Config_File);
-                     Config_Valid := False;
                      UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error processing configuration file: " & File_Name & "  Line " & Natural'image(Line_Number) & ":  Conversion Failure: Invalid value for USB Product ID" & CRLF));
                end;
 
@@ -1630,13 +1621,13 @@ package body Configuration is
       end loop;
       Close(Config_File);
 
-      if Config_Valid = False then
-         Error_Text := UnStr.To_Unbounded_String("Error: Missing Data_link configuration declaration in configuration file: " & File_Name & CRLF);
+      if Datalink.Datalink = None then
+         UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: Missing Data_link configuration declaration in configuration file: " & File_Name & CRLF));
       end if;
 
    exception
       when Too_Many_File_Formats_Specified =>
-         Error_Text := UnStr.To_Unbounded_String("Error: More than one IQ_Config_Format declaration specified for configuration file: " & File_Name & CRLF);
+         UnStr.Append(Error_Text, UnStr.To_Unbounded_String("Error: More than one IQ_Config_Format declaration specified for configuration file: " & File_Name & CRLF));
    end Get_Config_From_File;
 
    ---------------------

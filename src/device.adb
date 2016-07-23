@@ -1,6 +1,6 @@
 -----------------------------------------------------------------
 --                                                             --
--- ARBITER                                                     --
+-- DEVICE                                                      --
 --                                                             --
 -- Copyright (c) 2016, John Leimon                             --
 --                                                             --
@@ -27,13 +27,11 @@ with Util;          use Util;
 with USBHID;
 with System;        use System;
 
-package body Arbiter is
-
-   type Connection_State_Type is (Connected, Not_Connected);
+package body Device is
 
    Active_Protocol  : Protocol_Type;
    Active_Config    : Datalink_Configuration;
-                    
+
    USBHID_Device    : System.Address;
 
    Connection_State : Connection_State_Type;
@@ -62,11 +60,11 @@ package body Arbiter is
    -------------
    -- CONNECT --
    -------------
-   
+
    procedure Connect (Protocol : Protocol_Type;
                       Config   : Datalink_Configuration) is
    begin
-      
+
       if Connection_State = Connected then
          raise Connection_Already_Established;
       end if;
@@ -79,7 +77,7 @@ package body Arbiter is
             -- TODO Not supported yet TODO --
             raise Invalid_DataLink_Config;
          when USB_HID =>
-            USBHID_Device := USBHID.Open(Unsigned_Short(Config.Vendor_ID), 
+            USBHID_Device := USBHID.Open(Unsigned_Short(Config.Vendor_ID),
                                          Unsigned_Short(Config.Product_ID),
                                          System.Null_Address);
             if USBHID_Device = System.Null_Address then
@@ -89,8 +87,9 @@ package body Arbiter is
             raise Invalid_DataLink_Config;
       end case;
 
-      Active_Protocol := Protocol;
-      Active_Config   := Config;
+      Active_Protocol  := Protocol;
+      Active_Config    := Config;
+      Connection_State := Connected;
    end;
 
    ----------------
@@ -113,8 +112,9 @@ package body Arbiter is
          when USB_HID =>
             USBHID.Close(USBHID_Device);
          when None =>
-            raise Connection_Not_Established;
+            Null;
       end case;
+      Connection_State := Not_Connected;
    end Disconnect;
 
    ---------------
@@ -171,11 +171,11 @@ package body Arbiter is
    --------------
    -- SHUTDOWN --
    --------------
-   
+
    procedure Shutdown is
       Return_Value : Int;
    begin
-      
+
       if Connection_State = Connected then
          Disconnect;
       end if;
@@ -184,24 +184,38 @@ package body Arbiter is
 
    end Shutdown;
 
-   -------------------NVP_Transfer_Buffer
+   ---------------
+   -- CONNECTED --
+   ---------------
+
+   function Connected return Boolean is
+   begin
+      case Connection_State is
+         when Connected =>
+            return True;
+         when Not_Connected =>
+            return False;
+      end case;
+   end Connected;
+
+   -------------------
    -- VALUES_BUFFER --
    -------------------
 
    protected body Values_Buffer is
 
-      ---------
-      -- ADD --
-      ---------
+      -----------------------
+      -- VALUES_BUFFER.ADD --
+      -----------------------
 
       procedure Add(Item : in Name_Value_Pair) is
       begin
          Elements.Append(Item);
       end Add;
-      
-      ------------
-      -- REMOVE --
-      ------------
+
+      --------------------------
+      -- VALUES_BUFFER.REMOVE --
+      --------------------------
 
       procedure Remove(Items : out Name_Value_Pair_Vectors.Vector) is
       begin
@@ -217,18 +231,18 @@ package body Arbiter is
 
    protected body Requests_Buffer is
 
-      ---------
-      -- ADD --
-      ---------
+      -------------------------
+      -- REQUESTS_BUFFER.ADD --
+      -------------------------
 
       procedure Add(Item : in Unsigned_16) is
       begin
          Elements.Append(Item);
       end Add;
-      
-      ------------
-      -- REMOVE --
-      ------------
+
+      ----------------------------
+      -- REQUESTs_BUFFER.REMOVE --
+      ----------------------------
 
       procedure Remove(Items : out Unsigned_16_Vectors.Vector) is
       begin
@@ -246,4 +260,4 @@ begin
       Return_Value := USBHID.Initialize;
    end;
 
-end Arbiter;
+end Device;

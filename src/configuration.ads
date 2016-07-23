@@ -239,10 +239,9 @@ package Configuration is
 
    procedure Get_Config_From_File(File_Name            : in String;
                                   Adaptable_Parameters : out Adaptable_Parameter_Record_Vectors.Vector;
-                                  Config               : out Datalink_Configuration;
-                                  Protocol_Config      : out Protocol_Configuration;
-                                  Error_Text           : out UnStr.Unbounded_String;
-                                  Config_Valid         : out Boolean);
+                                  Datalink             : out Datalink_Configuration;
+                                  Protocol             : out Protocol_Configuration;
+                                  Error_Text           : out UnStr.Unbounded_String);
 
    function To_Hex_String(Input : Unsigned_8) return String;
 
