@@ -20,16 +20,23 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
+with Glib.Object;           use Glib.Object;
 with Gtk.Box;          use Gtk.Box;
 with Gtk.Button;       use Gtk.Button;
 with Gtk.Combo_Box;    use Gtk.Combo_Box;
 with Gtk.GEntry;       use Gtk.GEntry;
+with Gtk.Handlers;     use Gtk.Handlers;
 with Gtk.Label;        use Gtk.Label;
 with Gtk.Radio_Button; use Gtk.Radio_Button;
 with Gtk.Separator;    use Gtk.Separator;
 with Util;             use Util;
 
 package body Configuration_Panel is
+
+   package Basic_Callback is new Gtk.Handlers.Callback(GObject_Record);
+
+   On_Connect_Clicked        : Event_Callback;
+   On_Disconnect_Clicked     : Event_Callback;
 
    -- Pixel spacing magic numbers --
    Horizontal_Spaceage       : constant := 14;
@@ -68,12 +75,46 @@ package body Configuration_Panel is
    Connect_Button            : Gtk_Button;
    Disconnect_Button         : Gtk_Button;
 
+   ---------------------
+   -- CONNECT_CLICKED --
+   ---------------------
+
+   procedure Connect_Clicked (Self : access GObject_Record'class) is
+   begin
+      if On_Connect_Clicked /= Null then
+         On_Connect_Clicked.all;
+      end if;
+   end;
+
+   ------------------------
+   -- DISCONNECT_CLICKED --
+   ------------------------
+
+   procedure Disconnect_Clicked (Self : access GObject_Record'class) is
+   begin
+      if On_Disconnect_Clicked /= Null then
+         On_Disconnect_Clicked.all;
+      end if;
+   end;
+
+   ----------------------------
+   -- ASSIGN_EVENT_CALLBACKS --
+   ----------------------------
+
+   procedure Assign_Event_Callbacks(Connect_Clicked    : in not null Event_Callback;
+                                    Disconnect_Clicked : in not null Event_Callback) is
+   begin
+      On_Connect_Clicked    := Connect_Clicked;
+      On_Disconnect_Clicked := Disconnect_Clicked;
+   end Assign_Event_Callbacks;
+
    ------------
    -- CREATE --
    ------------
 
    procedure Create is
    begin
+
       Gtk_New_VBox(Box);
 
       Gtk_New_HBox(Operation_Box);
@@ -158,8 +199,6 @@ package body Configuration_Panel is
       Set_Sensitive(Baud_Rate_Combo_Box,    False);
       Set_Sensitive(Stop_Bits_Combo_Box,    False);
       Set_Sensitive(Parity_Combo_Box,       False);
-      Set_Sensitive(Connect_Button,         False);
-      Set_Sensitive(Disconnect_Button,      False);
       Set_Sensitive(Device_Name_Label,      False);
       Set_Sensitive(Baud_Rate_Label,        False);
       Set_Sensitive(Stop_Bits_Label,        False);
@@ -168,8 +207,31 @@ package body Configuration_Panel is
       Set_Sensitive(PID_Label,              False);
       Set_Sensitive(TCP_IPv4_Address_Label, False);
       Set_Sensitive(TCP_Port_Label,         False);
+      Set_Sensitive(Connect_Button,         False);
+      Set_Sensitive(Disconnect_Button,      False);
+
+      Basic_Callback.Connect(Connect_Button, "clicked", Connect_Clicked'access);
+      Basic_Callback.Connect(Disconnect_Button, "clicked", Disconnect_Clicked'access);
 
       -- TODO: Make configuration panel do something useful --
    end Create;
+
+   --------------------------------
+   -- SET_CONNECT_BUTTON_ENABLED --
+   --------------------------------
+
+   procedure Set_Connect_Button_Enabled(Enabled : Boolean) is
+   begin
+      Set_Sensitive(Connect_Button, Enabled);
+   end Set_Connect_Button_Enabled;
+
+   -----------------------------------
+   -- SET_DISCONNECT_BUTTON_ENABLED --
+   -----------------------------------
+
+   procedure Set_Disconnect_Button_Enabled(Enabled : Boolean) is
+   begin
+      Set_Sensitive(Disconnect_Button, Enabled);
+   end Set_Disconnect_Button_Enabled;
 
 end Configuration_Panel;

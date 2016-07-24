@@ -25,14 +25,24 @@ with Glib.Object;   use Glib.Object;
 with Glib.Values;   use Glib.Values;
 with Gtk.Tree_View; use Gtk.Tree_View;
 with Gtk.Window;    use Gtk.Window;
+with Interfaces;    use Interfaces;
 
 package Control_Panel is
 
    View : Gtk_Tree_View;
 
+   type Parameter_Boolean_Update_Event_Callback is access procedure (Parameter_Index : Natural;
+                                                                     Value           : Boolean);
+   type Parameter_Unsigned_32_Update_Event_Callback is access procedure (Parameter_Index : Natural;
+                                                                         Value           : Unsigned_32);
+
    procedure Create(Main_Window : in out Gtk_Window);
 
    procedure Set_Adaptable_Parameters(Parameters : in Adaptable_Parameter_Record_Vectors.Vector);
+
+   procedure Assign_Event_Callbacks(Log_Data_Updated        : in not null Parameter_Boolean_Update_Event_Callback;
+                                    Requesting_Data_Updated : in not null Parameter_Boolean_Update_Event_Callback;
+                                    Set_Value_Clicked       : in not null Parameter_Unsigned_32_Update_Event_Callback);
 
    private
 

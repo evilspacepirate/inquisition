@@ -72,6 +72,10 @@ package body Control_Panel is
 
    Window                             : Gtk_Window;
 
+   On_Log_Data_Updated                : Parameter_Boolean_Update_Event_Callback;
+   On_Requesting_Data_Updated         : Parameter_Boolean_Update_Event_Callback;
+   On_Set_Value_Clicked               : Parameter_Unsigned_32_Update_Event_Callback;
+
    ------------
    -- CREATE --
    ------------
@@ -260,6 +264,19 @@ package body Control_Panel is
          end if;
       end loop;
    end Set_Adaptable_Parameters;
+
+   ----------------------------
+   -- ASSIGN_EVENT_CALLBACKS --
+   ----------------------------
+
+   procedure Assign_Event_Callbacks(Log_Data_Updated        : in not null Parameter_Boolean_Update_Event_Callback;
+                                    Requesting_Data_Updated : in not null Parameter_Boolean_Update_Event_Callback;
+                                    Set_Value_Clicked       : in not null Parameter_Unsigned_32_Update_Event_Callback) is
+   begin
+      On_Log_Data_Updated        := Log_Data_Updated;
+      On_Requesting_Data_Updated := Requesting_Data_Updated;
+      On_Set_Value_Clicked       := Set_Value_Clicked;
+   end Assign_Event_Callbacks;
 
    ------------------------------
    -- LOGGING_CHECKBOX_TOGGLED --

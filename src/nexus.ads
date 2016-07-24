@@ -20,11 +20,25 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
+with Interfaces; use Interfaces;
 
 package Nexus is
 
    procedure Initialize;
-
    procedure Shutdown;
+
+   private
+
+   procedure Connect_Button_Click_Event;
+   procedure Disconnect_Button_Click_Event;
+
+   procedure Log_Data_Update_Event        (Parameter_Index : Natural;
+                                           Logging_Data    : Boolean);
+
+   procedure Requesting_Data_Update_Event (Parameter_Index : Natural;
+                                           Requesting_Data : Boolean);
+
+   procedure Set_Value_Click_Event        (Parameter_Index : Natural;
+                                           New_Value       : Unsigned_32);
 
 end Nexus;

@@ -1,6 +1,6 @@
 -----------------------------------------------------------------
 --                                                             --
--- Inquisition                                                 --
+-- INQUISITION                                                 --
 --                                                             --
 -- Visual debugging tool for exchanging data with embedded     --
 -- systems.                                                    --

@@ -20,13 +20,27 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
-with Gtk.Box; use Gtk.Box;
+with Gtk.Box;     use Gtk.Box;
+with Glib.Object; use Glib.Object;
 
 package Configuration_Panel is
 
    Box : Gtk_VBox;
 
+   type Event_Callback is access procedure;
+
    procedure Create;
    -- Builds up the configuration panel VBox widget --
+
+   procedure Assign_Event_Callbacks(Connect_Clicked    : in not null Event_Callback;
+                                    Disconnect_Clicked : in not null Event_Callback);
+
+   procedure Set_Connect_Button_Enabled(Enabled : Boolean);
+   procedure Set_Disconnect_Button_Enabled(Enabled : Boolean);
+
+   private
+
+   procedure Connect_Clicked (Self : access GObject_Record'class);
+   procedure Disconnect_Clicked (Self : access GObject_Record'class);
 
 end Configuration_Panel;
