@@ -75,6 +75,10 @@ package body Control_Panel is
    On_Log_Data_Updated                : Parameter_Boolean_Update_Event_Callback;
    On_Requesting_Data_Updated         : Parameter_Boolean_Update_Event_Callback;
    On_Set_Value_Clicked               : Parameter_Unsigned_32_Update_Event_Callback;
+   On_Parameter_Double_Clicked        : Parameter_Event_Callback;
+   On_Request_Period_Updated          : Parameter_Duration_Update_Event_Callback;
+
+   Adaptable_Parameters               : Adaptable_Parameter_Record_Vectors.Vector;
 
    ------------
    -- CREATE --
@@ -226,6 +230,7 @@ package body Control_Panel is
       use Adaptable_Parameter_Record_Vectors;
       Iter : Gtk_Tree_Iter := Null_Iter;
    begin
+      Adaptable_Parameters := Parameters;
       for Index in Natural range 0 .. Natural(Length(Parameters)) - 1 loop
 
          Append(Store.all'access, Iter);
@@ -269,13 +274,17 @@ package body Control_Panel is
    -- ASSIGN_EVENT_CALLBACKS --
    ----------------------------
 
-   procedure Assign_Event_Callbacks(Log_Data_Updated        : in not null Parameter_Boolean_Update_Event_Callback;
-                                    Requesting_Data_Updated : in not null Parameter_Boolean_Update_Event_Callback;
-                                    Set_Value_Clicked       : in not null Parameter_Unsigned_32_Update_Event_Callback) is
+   procedure Assign_Event_Callbacks(Log_Data_Updated         : in not null Parameter_Boolean_Update_Event_Callback;
+                                    Requesting_Data_Updated  : in not null Parameter_Boolean_Update_Event_Callback;
+                                    Set_Value_Clicked        : in not null Parameter_Unsigned_32_Update_Event_Callback;
+                                    Parameter_Double_Clicked : in not null Parameter_Event_Callback;
+                                    Request_Period_Updated   : in not null Parameter_Duration_Update_Event_Callback) is
    begin
-      On_Log_Data_Updated        := Log_Data_Updated;
-      On_Requesting_Data_Updated := Requesting_Data_Updated;
-      On_Set_Value_Clicked       := Set_Value_Clicked;
+      On_Log_Data_Updated         := Log_Data_Updated;
+      On_Requesting_Data_Updated  := Requesting_Data_Updated;
+      On_Set_Value_Clicked        := Set_Value_Clicked;
+      On_Parameter_Double_Clicked := Parameter_Double_Clicked;
+      On_Request_Period_Updated   := Request_Period_Updated;
    end Assign_Event_Callbacks;
 
    ------------------------------
@@ -292,12 +301,13 @@ package body Control_Panel is
       Old_Value := Get_Boolean(Store, Iter, Is_Logged_ID);
       New_Value := not Old_Value;
       Set(Store, Iter, Is_Logged_ID, New_Value);
-      if new_value then
-         put_line("Logging enabled for data element on row " & Path);
-      else
-         put_line("Logging disabled for data element on row " & Path);
+      if On_Log_Data_Updated /= Null then
+         if New_Value then
+            On_Log_Data_Updated(Natural'Value(Path), True);
+         else
+            On_Log_Data_Updated(Natural'Value(Path), False);
+         end if;
       end if;
-      -- TODO --
    end Logging_Checkbox_Toggled;
 
    ------------------------------------
@@ -314,16 +324,17 @@ package body Control_Panel is
       Old_Value := Get_Boolean(Store, Iter, Is_Requesting_Data_ID);
       New_Value := not Old_Value;
       Set(Store, Iter, Is_Requesting_Data_ID, New_Value);
-      if New_Value then
-         Put_Line("Requesting data for data element on row " & Path);
-      else
-         Put_Line("Not requesting data for data element on row " & Path);
+      if On_Requesting_Data_Updated /= Null then
+         if New_Value then
+            On_Requesting_Data_Updated(Natural'Value(Path), True);
+         else
+            On_Requesting_Data_Updated(Natural'Value(Path), False);
+         end if;
       end if;
-      -- TODO --
    end Is_Requesting_Checkbox_Toggled;
 
    --------------------------------------
-   -- DOUBLE_CLICK_ON_DATA_ELEMENT_rOW --
+   -- DOUBLE_CLICK_ON_DATA_ELEMENT_ROW --
    --------------------------------------
 
    procedure Double_Click_On_Data_Element_Row(Object : access GObject_Record'class;
@@ -332,13 +343,15 @@ package body Control_Panel is
       Path   : Gtk_Tree_Path;
    begin
       Get_Cursor(View.all'access, Path, Column);
-      Put_Line("Data element row " & To_String(Path) & " double clicked");
-      -- TODO --
+      if On_Parameter_Double_Clicked /= Null then
+         On_Parameter_Double_Clicked(Natural'Value(To_String(Path)));
+      end if;
    end Double_Click_On_Data_Element_Row;
 
    ------------------------
    -- SET_BUTTON_PRESSED --
    ------------------------
+
    function Set_Button_Pressed(Object : access GObject_Record'class;
                                Params : GValues) return Boolean is
       X      : GInt;
@@ -356,22 +369,35 @@ package body Control_Panel is
 
       Get_Path_At_Pos(View, X, Y, Path, Column, Cell_X, Cell_Y, Found);
 
-      if Found then
-        if Get_Title(Column) = "Set Data Element" then
-           Iter := Get_Iter_From_String(Store, To_String(Path));
-           Set(Store, Iter, Set_Button_ID, Button_Clicked_Pix);
-           Clicked_Row_Iter := Iter;
-        end if;
-      else
-        Clicked_Row_Iter := Null_Iter;
-      end if;
-      -- TODO --
+      declare
+         use Adaptable_Parameter_Record_Vectors;
+         Parameter_Clicked : Adaptable_Parameter_Record := Element(Adaptable_Parameters, Natural'Value(To_String(Path)));
+      begin
+         if Parameter_Clicked.Is_Writable = False then
+            -- Set button only works for writable adaptable parameters --
+            return False;
+         end if;
+
+         if Found then
+           if Get_Title(Column) = "Set Data Element" then
+              Iter := Get_Iter_From_String(Store, To_String(Path));
+              Set(Store, Iter, Set_Button_ID, Button_Clicked_Pix);
+              Clicked_Row_Iter := Iter;
+              if On_Set_Value_Clicked /= Null then
+                 On_Set_Value_Clicked(Natural'Value(To_String(Path)), String_To_Unsigned_32(Get_String(Store, Iter, Set_Value_ID)));
+              end if;
+           end if;
+         else
+           Clicked_Row_Iter := Null_Iter;
+         end if;
+      end;
       return False;
    end Set_Button_Pressed;
 
    -------------------------
    -- SET_BUTTON_RELEASED --
    -------------------------
+
    function Set_Button_Released(Object : access GObject_Record'class;
                                 Params : GValues) return Boolean is
    begin
@@ -393,9 +419,17 @@ package body Control_Panel is
       Value : GValue        := Nth(Params, 2);
       Iter  : Gtk_Tree_Iter := Get_Iter_From_String(Store, Path);
    begin
-      Set_Value(Store, Iter, Set_Value_ID, Value);
-      Put_Line("New set value for data element row " & Path & " is '" & Get_String(Value) & "'");
-      -- TODO --
+
+      -- Make sure this value is convertable to an unsigned_32 --
+      declare
+         New_Value : Unsigned_32 := String_To_Unsigned_32(Get_String(Value));
+      begin
+         -- Update value in model --
+         Set_Value(Store, Iter, Set_Value_ID, Value);
+      end;
+   exception
+      when Conversion_Failure =>
+         Null;
    end Set_Value_Edited;
    
    ---------------------------
@@ -408,9 +442,18 @@ package body Control_Panel is
       Value : GValue        := Nth(Params, 2);
       Iter  : Gtk_Tree_Iter := Get_Iter_From_String(Store, Path);
    begin
-      Set_Value(Store, Iter, Data_Request_Period_ID, Value);
-      Put_Line("Data request period for data element row " & Path & " is '" & Get_String(Value) & "'");
-      -- TODO --
+
+      declare
+         New_Value : Duration := String_To_Duration(Get_String(Value));
+      begin
+         Set_Value(Store, Iter, Data_Request_Period_ID, Value);
+         if On_Request_Period_Updated /= Null then
+            On_Request_Period_Updated(Natural'Value(Path), New_Value);
+         end if;
+      end;
+   exception
+      when Conversion_Failure_Sample_Period =>
+         Null;
    end Request_Period_Edited;
 
 end Control_Panel;

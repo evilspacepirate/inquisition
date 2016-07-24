@@ -31,18 +31,23 @@ package Control_Panel is
 
    View : Gtk_Tree_View;
 
+   type Parameter_Event_Callback is access procedure (Parameter_Index : Natural);
    type Parameter_Boolean_Update_Event_Callback is access procedure (Parameter_Index : Natural;
                                                                      Value           : Boolean);
    type Parameter_Unsigned_32_Update_Event_Callback is access procedure (Parameter_Index : Natural;
                                                                          Value           : Unsigned_32);
+   type Parameter_Duration_Update_Event_Callback is access procedure (Parameter_Index : Natural;
+                                                                      Value           : Duration);
 
    procedure Create(Main_Window : in out Gtk_Window);
 
    procedure Set_Adaptable_Parameters(Parameters : in Adaptable_Parameter_Record_Vectors.Vector);
 
-   procedure Assign_Event_Callbacks(Log_Data_Updated        : in not null Parameter_Boolean_Update_Event_Callback;
-                                    Requesting_Data_Updated : in not null Parameter_Boolean_Update_Event_Callback;
-                                    Set_Value_Clicked       : in not null Parameter_Unsigned_32_Update_Event_Callback);
+   procedure Assign_Event_Callbacks(Log_Data_Updated         : in not null Parameter_Boolean_Update_Event_Callback;
+                                    Requesting_Data_Updated  : in not null Parameter_Boolean_Update_Event_Callback;
+                                    Set_Value_Clicked        : in not null Parameter_Unsigned_32_Update_Event_Callback;
+                                    Parameter_Double_Clicked : in not null Parameter_Event_Callback;
+                                    Request_Period_Updated   : in not null Parameter_Duration_Update_Event_Callback);
 
    private
 

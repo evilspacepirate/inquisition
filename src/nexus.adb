@@ -79,9 +79,11 @@ package body Nexus is
 
       Configuration_Panel.Assign_Event_Callbacks(Connect_Clicked    => Connect_Button_Click_Event'access,
                                                  Disconnect_Clicked => Disconnect_Button_Click_Event'access);
-      Control_Panel.Assign_Event_Callbacks(Log_Data_Updated        => Log_Data_Update_Event'access,
-                                           Requesting_Data_Updated => Requesting_Data_Update_Event'access,
-                                           Set_Value_Clicked       => Set_Value_Click_Event'access);
+      Control_Panel.Assign_Event_Callbacks(Log_Data_Updated         => Log_Data_Update_Event'access,
+                                           Requesting_Data_Updated  => Requesting_Data_Update_Event'access,
+                                           Set_Value_Clicked        => Set_Value_Click_Event'access,
+                                           Parameter_Double_Clicked => Double_Click_On_Parameter_Event'access,
+                                           Request_Period_Updated   => Request_Period_Update_Event'access);
    end;
 
    --------------
@@ -153,5 +155,29 @@ package body Nexus is
                " Set Value: " & Unsigned_32'image(New_Value) & "!");
       -- XXX DEBUG ONLY XXX --
    end Set_Value_Click_Event;
+
+   -------------------------------------
+   -- DOUBLE_CLICK_ON_PARAMETER_EVENT --
+   -------------------------------------
+
+   procedure Double_Click_On_Parameter_Event (Parameter_Index : Natural) is
+   begin
+      -- XXX DEBUG ONLY XXX --
+      Put_Line("AP " & Natural'image(Parameter_Index) & " Double-click: ");
+      -- XXX DEBUG ONLY XXX --
+   end Double_Click_On_Parameter_Event;
+
+   ---------------------------------
+   -- REQUEST_PERIOD_UPDATE_EVENT --
+   ---------------------------------
+
+   procedure Request_Period_Update_Event (Parameter_Index : Natural;
+                                          Period          : Duration) is
+   begin
+      -- XXX DEBUG ONLY XXX --
+      Put_Line("AP " & Natural'image(Parameter_Index) &
+               " New request period: " & Duration'Image(Period));
+      -- XXX DEBUG ONLY XXX --
+   end Request_Period_Update_Event;
 
 end Nexus;

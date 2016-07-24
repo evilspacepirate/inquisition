@@ -32,13 +32,18 @@ package Nexus is
    procedure Connect_Button_Click_Event;
    procedure Disconnect_Button_Click_Event;
 
-   procedure Log_Data_Update_Event        (Parameter_Index : Natural;
-                                           Logging_Data    : Boolean);
+   procedure Log_Data_Update_Event           (Parameter_Index : Natural;
+                                              Logging_Data    : Boolean);
 
-   procedure Requesting_Data_Update_Event (Parameter_Index : Natural;
-                                           Requesting_Data : Boolean);
+   procedure Requesting_Data_Update_Event    (Parameter_Index : Natural;
+                                              Requesting_Data : Boolean);
 
-   procedure Set_Value_Click_Event        (Parameter_Index : Natural;
-                                           New_Value       : Unsigned_32);
+   procedure Set_Value_Click_Event           (Parameter_Index : Natural;
+                                              New_Value       : Unsigned_32);
+
+   procedure Double_Click_On_Parameter_Event (Parameter_Index : Natural);
+
+   procedure Request_Period_Update_Event     (Parameter_Index : Natural;
+                                              Period          : Duration);
 
 end Nexus;
