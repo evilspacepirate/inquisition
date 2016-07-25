@@ -69,6 +69,7 @@ package body Control_Panel is
 
    Button_Clicked_Pix                 : Gdk_PixBuf;
    Button_Unclicked_Pix               : Gdk_PixBuf;
+   Button_Disabled_Pix                : Gdk_PixBuf;
 
    Window                             : Gtk_Window;
 
@@ -79,6 +80,8 @@ package body Control_Panel is
    On_Request_Period_Updated          : Parameter_Duration_Update_Event_Callback;
 
    Adaptable_Parameters               : Adaptable_Parameter_Record_Vectors.Vector;
+
+   Panel_Enabled                      : Boolean := False;
 
    ------------
    -- CREATE --
@@ -95,8 +98,10 @@ package body Control_Panel is
       -- Create Button Images --
       Button_Clicked_Pix   := Gdk_New_From_XPM_Data(Button_Clicked_XPM);
       Button_UnClicked_Pix := Gdk_New_From_XPM_Data(Button_Unclicked_XPM);
+      Button_Disabled_Pix  := Gdk_New_From_XPM_Data(Button_Disabled_XPM);
       Button_Clicked_Pix   := Scale_Simple(Button_Clicked_Pix, Button_Width, Button_Height);
       Button_UnClicked_Pix := Scale_Simple(Button_Unclicked_Pix, Button_Width, Button_Height);
+      Button_Disabled_Pix  := Scale_Simple(Button_Disabled_Pix, Button_Width, Button_Height);
 
       -- Create View --
       Gtk_New(View);
@@ -242,11 +247,11 @@ package body Control_Panel is
             Set(Store.all'access, Iter, Value_ID,                           "-");
             Set(Store.all'access, Iter, Set_Value_Is_Editable_ID,           False);
             Set(Store.all'access, Iter, Is_Requesting_Data_ID,              Parameters.Element(Index).Is_Sampling);
-            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, True);
+            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, False);
             Set(Store.all'access, Iter, Data_Request_Period_ID,             UnStr.To_String(Parameters.Element(Index).Sample_Period));
             Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, True);
             Set(Store.all'access, Iter, Is_Logged_ID,                       False);
-            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          True);
+            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          False);
          else
             -- Not Readable --
             Set(Store.all'access, Iter, Is_Requesting_Data_ID,              False);
@@ -259,7 +264,7 @@ package body Control_Panel is
 
          if Parameters.Element(Index).Is_Writable then
             -- Writable --
-            Set(Store.all'access, Iter, Set_Button_ID,            Button_Unclicked_Pix);
+            Set(Store.all'access, Iter, Set_Button_ID,            Button_Disabled_Pix);
             Set(Store.all'access, Iter, Set_Value_ID,             Unsigned_32'image(Parameters.Element(Index).Default_Set_Value));
             Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, True);
          else
@@ -298,6 +303,10 @@ package body Control_Panel is
       Path      : constant String        := Get_String(Nth(Params, 1));
       Iter      : constant Gtk_Tree_Iter := Get_Iter_From_String(Store, Path);
    begin
+      if Panel_Enabled = False then
+         return;
+      end if;
+
       Old_Value := Get_Boolean(Store, Iter, Is_Logged_ID);
       New_Value := not Old_Value;
       Set(Store, Iter, Is_Logged_ID, New_Value);
@@ -321,6 +330,10 @@ package body Control_Panel is
       Path      : constant String        := Get_String(Nth(Params, 1));
       Iter      : constant Gtk_Tree_Iter := Get_Iter_From_String(Store, Path);
    begin
+      if Panel_Enabled = False then
+         return;
+      end if;
+
       Old_Value := Get_Boolean(Store, Iter, Is_Requesting_Data_ID);
       New_Value := not Old_Value;
       Set(Store, Iter, Is_Requesting_Data_ID, New_Value);
@@ -342,6 +355,10 @@ package body Control_Panel is
       Column : Gtk_Tree_View_Column;
       Path   : Gtk_Tree_Path;
    begin
+      if Panel_Enabled = False then
+         return;
+      end if;
+
       Get_Cursor(View.all'access, Path, Column);
       if On_Parameter_Double_Clicked /= Null then
          On_Parameter_Double_Clicked(Natural'Value(To_String(Path)));
@@ -363,6 +380,10 @@ package body Control_Panel is
       Column : Gtk_Tree_View_Column;
       Iter   : Gtk_Tree_Iter;
    begin
+      if Panel_Enabled = False then
+         return False;
+      end if;
+
       Get_Pointer(Window, X, Y);
 
       Convert_Widget_To_Tree_Coords(View, X, Y, X, Y);
@@ -401,6 +422,10 @@ package body Control_Panel is
    function Set_Button_Released(Object : access GObject_Record'class;
                                 Params : GValues) return Boolean is
    begin
+      if Panel_Enabled = False then
+         return False;
+      end if;
+
       if Clicked_Row_Iter /= Null_Iter then
          Set(Store, Clicked_Row_Iter, Set_Button_ID, Button_Unclicked_Pix);
          Clicked_Row_Iter := Null_Iter;
@@ -428,7 +453,7 @@ package body Control_Panel is
          Set_Value(Store, Iter, Set_Value_ID, Value);
       end;
    exception
-      when Conversion_Failure =>
+      when Others =>
          Null;
    end Set_Value_Edited;
    
@@ -452,9 +477,100 @@ package body Control_Panel is
          end if;
       end;
    exception
-      when Conversion_Failure_Sample_Period =>
+      when Others =>
          Null;
    end Request_Period_Edited;
+
+   ---------------
+   -- SET_VALUE --
+   ---------------
+
+   procedure Set_Value (Adaptable_Parameter_Index : Natural;
+                        Value                     : Unsigned_32) is
+   begin
+      -- TODO --
+      Null;
+   end Set_Value;
+
+   -------------
+   -- DISABLE --
+   -------------
+
+   procedure Disable is
+      use Adaptable_Parameter_Record_Vectors;
+      Iter : Gtk_Tree_Iter := Null_Iter;
+   begin
+      for Index in Natural range 0 .. Natural(Length(Adaptable_Parameters)) - 1 loop
+         Iter := Get_Iter_From_String(Store, Natural'image(Index));
+
+         if Adaptable_Parameters.Element(Index).Is_Readable then
+            -- Readable --
+            Set(Store.all'access, Iter, Value_ID,                           "-");
+            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID,           True);
+            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, False);
+            Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, True);
+            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          False);
+         else
+            -- Not Readable --
+            Set(Store.all'access, Iter, Is_Requesting_Data_ID,              False);
+            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, False);
+            Set(Store.all'access, Iter, Data_Request_Period_ID,             "");
+            Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, False);
+            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          False);
+         end if;
+
+         if Adaptable_Parameters.Element(Index).Is_Writable then
+            -- Writable --
+            Set(Store.all'access, Iter, Set_Button_ID,            Button_Disabled_Pix);
+            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, True);
+         else
+            -- Not Writable --
+            Set(Store.all'access, Iter, Set_Value_ID,             "");
+            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, False);
+         end if;
+      end loop;
+      Panel_Enabled := False;
+   end Disable;
+
+   ------------
+   -- ENABLE --
+   ------------
+
+   procedure Enable is
+      use Adaptable_Parameter_Record_Vectors;
+      Iter : Gtk_Tree_Iter := Null_Iter;
+   begin
+      for Index in Natural range 0 .. Natural(Length(Adaptable_Parameters)) - 1 loop
+         Iter := Get_Iter_From_String(Store, Natural'image(Index));
+
+         if Adaptable_Parameters.Element(Index).Is_Readable then
+            -- Readable --
+            Set(Store.all'access, Iter, Value_ID,                           "-");
+            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID,           True);
+            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, True);
+            Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, True);
+            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          True);
+         else
+            -- Not Readable --
+            Set(Store.all'access, Iter, Is_Requesting_Data_ID,              False);
+            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, True);
+            Set(Store.all'access, Iter, Data_Request_Period_ID,             "");
+            Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, True);
+            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          True);
+         end if;
+
+         if Adaptable_Parameters.Element(Index).Is_Writable then
+            -- Writable --
+            Set(Store.all'access, Iter, Set_Button_ID,            Button_Unclicked_Pix);
+            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, True);
+         else
+            -- Not Writable --
+            Set(Store.all'access, Iter, Set_Value_ID,             "");
+            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, False);
+         end if;
+      end loop;
+      Panel_Enabled := True;
+   end Enable;
 
 end Control_Panel;
 

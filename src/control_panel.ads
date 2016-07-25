@@ -49,6 +49,13 @@ package Control_Panel is
                                     Parameter_Double_Clicked : in not null Parameter_Event_Callback;
                                     Request_Period_Updated   : in not null Parameter_Duration_Update_Event_Callback);
 
+   procedure Set_Value (Adaptable_Parameter_Index : Natural;
+                        Value                     : Unsigned_32);
+
+   procedure Disable;
+
+   procedure Enable;
+
    private
 
    procedure Logging_Checkbox_Toggled(Object : access GObject_Record'class;
