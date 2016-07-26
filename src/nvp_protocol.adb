@@ -196,9 +196,9 @@ package body NVP_Protocol is
 
    end Create_Request_Value_Packet;
 
-   -----------------------------
+   ---------------------------------
    -- CREATE_REQUEST_VALUE_PACKET --
-   -----------------------------
+   ---------------------------------
    
    function Create_Request_Value_Packet (Parameter_IDs : Unsigned_16_Vectors.Vector;
                                          Source        : Unsigned_8;
@@ -217,5 +217,161 @@ package body NVP_Protocol is
                                    Destination,
                                    Packet);
    end Create_Request_Value_Packet;
+
+   --------------------
+   -- INTERPRET_DATA --
+   --------------------
+
+   function Interpret_Data (Input : Unsigned_8) return Unsigned_8_Array is
+      No_Message     : Unsigned_8_Array(1 .. 0);
+      Calculated_CRC : Unsigned_8;
+   begin
+      case Interpreter.State is
+         when Sync_Byte_1 =>
+            if Input = Start_Of_Message_1 then
+               Interpreter.Byte_Index                                  := 1;
+               Interpreter.State                                       := Sync_Byte_2;
+               Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+               Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
+            end if;
+            return No_Message;
+         when Sync_Byte_2 =>
+            if Input = Start_Of_Message_2 then
+               Interpreter.State                                       := Length_Low_Byte;
+               Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+               Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
+            end if;
+            return No_Message;
+         when Length_Low_Byte =>
+            Interpreter.Packet_Length                               := Natural(Input);
+            Interpreter.State                                       := Length_High_Byte;
+            Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+            Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
+            return No_Message;
+         when Length_High_Byte =>
+            Interpreter.Packet_Length                               := Interpreter.Packet_Length +
+                                                                       Natural(Shift_Left(Unsigned_16(Input), 8)) -
+                                                                       Natural(Header_Size);
+            Interpreter.State                                       := Message_ID;
+            Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+            Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
+            return No_Message;
+         when Message_ID =>
+            Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+            Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
+
+            if Interpreter.Packet_Length = 0 then
+               Interpreter.State := CRC;
+            else
+               Interpreter.State                        := Message_Data;
+               Interpreter.Message_Data_Bytes_Remaining := Interpreter.Packet_Length;
+            end if;
+            return No_Message;
+         when Message_Data =>
+            Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+            Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
+            Interpreter.Message_Data_Bytes_Remaining                := Interpreter.Message_Data_Bytes_Remaining - 1;
+
+            if Interpreter.Message_Data_Bytes_Remaining = 0 then
+               Interpreter.State := CRC;
+            end if;
+            return No_Message;
+         when CRC =>
+            Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+            Interpreter.State                                       := Sync_Byte_1;
+            Calculated_CRC                                          := Compute_CRC(Interpreter.Message_Data_Buffer(CRC_Data_Start_Index .. Interpreter.Byte_Index));
+
+            if Calculated_CRC = Valid_CRC_Value then
+               return Interpreter.Message_Data_Buffer(1 .. Interpreter.Byte_Index);
+            else
+               return No_Message;
+            end if;
+         when Source | Destination =>
+            -- Invalid state when routing is not enabled --
+            Interpreter.State := Sync_Byte_1;
+            return No_Message;
+      end case;
+   end Interpret_Data;
+
+   ---------------------------------
+   -- INTERPRET_DATA_WITH_ROUTING --
+   ---------------------------------
+
+   function Interpret_Data_With_Routing (Input : Unsigned_8) return Unsigned_8_Array is
+      No_Message     : Unsigned_8_Array(1 .. 0);
+      Calculated_CRC : Unsigned_8;
+   begin
+      case Interpreter.State is
+         when Sync_Byte_1 =>
+            if Input = Start_Of_Message_1 then
+               Interpreter.Byte_Index                                  := 1;
+               Interpreter.State                                       := Sync_Byte_2;
+               Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+               Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
+            end if;
+            return No_Message;
+         when Sync_Byte_2 =>
+            if Input = Start_Of_Message_2 then
+               Interpreter.State                                       := Length_Low_Byte;
+               Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+               Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
+            end if;
+            return No_Message;
+         when Length_Low_Byte =>
+            Interpreter.Packet_Length                               := Natural(Input);
+            Interpreter.State                                       := Length_High_Byte;
+            Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+            Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
+            return No_Message;
+         when Length_High_Byte =>
+            Interpreter.Packet_Length                               := Interpreter.Packet_Length +
+                                                                       Natural(Shift_Left(Unsigned_16(Input), 8)) -
+                                                                       Natural(Header_Size_With_Routing);
+            Interpreter.State                                       := Message_ID;
+            Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+            Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
+            return No_Message;
+         when Source =>
+            Interpreter.State                                       := Destination;
+            Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+            Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
+            return No_Message;
+         when Destination =>
+            Interpreter.State                                       := Message_ID;
+            Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+            Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
+            return No_Message;
+         when Message_ID =>
+            Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+            Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
+
+            if Interpreter.Packet_Length = 0 then
+               Interpreter.State := CRC;
+            else
+               Interpreter.State                        := Message_Data;
+               Interpreter.Message_Data_Bytes_Remaining := Interpreter.Packet_Length;
+            end if;
+            return No_Message;
+         when Message_Data =>
+            Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+            Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
+            Interpreter.Message_Data_Bytes_Remaining                := Interpreter.Message_Data_Bytes_Remaining - 1;
+
+            if Interpreter.Message_Data_Bytes_Remaining = 0 then
+               Interpreter.State := CRC;
+            end if;
+            return No_Message;
+         when CRC =>
+            Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
+            Interpreter.State                                       := Sync_Byte_1;
+            Calculated_CRC                                          := Compute_CRC(Interpreter.Message_Data_Buffer(CRC_Data_Start_Index .. Interpreter.Byte_Index));
+
+            if Calculated_CRC = Valid_CRC_Value then
+               return Interpreter.Message_Data_Buffer(1 .. Interpreter.Byte_Index);
+            else
+               return No_Message;
+            end if;
+      end case;
+   end Interpret_Data_With_Routing;
 
 end NVP_Protocol;

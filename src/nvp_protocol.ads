@@ -28,8 +28,17 @@ package NVP_Protocol is
 
    type Message_ID_Type is new Unsigned_8;
 
-   Write_Data_ID : constant Message_ID_Type := 0;
-   Read_Data_ID  : constant Message_ID_Type := 1;
+   Maximum_Packet_Size      : constant := 2048;
+   Header_Size              : constant := 1;
+   Header_Size_With_Routing : constant := 3;
+   CRC_Data_Start_Index     : constant := 3;
+   Valid_CRC_Value          : constant := 0;
+
+   Start_Of_Message_1       : constant Unsigned_8 := 16#55#;
+   Start_Of_Message_2       : constant Unsigned_8 := 16#AA#;
+
+   Write_Data_ID            : constant Message_ID_Type := 0;
+   Read_Data_ID             : constant Message_ID_Type := 1;
 
    function Envelope_Message_Data(Message_ID : Message_ID_Type;
                                   Data       : Unsigned_8_Array) return Unsigned_8_Array;
@@ -60,5 +69,39 @@ package NVP_Protocol is
    function Create_Request_Value_Packet (Parameter_IDs : Unsigned_16_Vectors.Vector;
                                          Source        : Unsigned_8;
                                          Destination   : Unsigned_8) return Unsigned_8_Array;
+
+   function Interpret_Data (Input : Unsigned_8) return Unsigned_8_Array;
+   -- Reads bytes off an input stream and returns a byte array containing a --
+   -- complete message if one is found                                      --
+
+   function Interpret_Data_With_Routing (Input : Unsigned_8) return Unsigned_8_Array;
+   -- Reads bytes off an input stream and returns a byte array containing a --
+   -- complete message if one is found                                      --
+
+   private
+
+   type Interpreter_State is (Sync_Byte_1,
+                              Sync_Byte_2,
+                              Length_Low_Byte,
+                              Length_High_Byte,
+                              Source,
+                              Destination,
+                              Message_ID,
+                              Message_Data,
+                              CRC);
+
+   type Interpreter_Data is record
+      State                        : Interpreter_State;
+      Message_Data_Buffer          : Unsigned_8_Array(1 .. Maximum_Packet_Size);
+      Byte_Index                   : Natural;
+      Packet_Length                : Natural;
+      Message_Data_Bytes_Remaining : Natural;
+   end record;
+
+   Interpreter : Interpreter_Data := (State                        => Sync_Byte_1,
+                                      Byte_Index                   => 1,
+                                      Message_Data_Buffer          => (others => 0),
+                                      Packet_Length                => 0,
+                                      Message_Data_Bytes_Remaining => 0);
 
 end NVP_Protocol;
