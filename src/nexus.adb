@@ -28,7 +28,9 @@ with Device;
 with Primatives;            use Primatives;
 with Raw_Data_Panel;
 with Status_Bar_Panel;
+with System;                use System;
 with System_Messages_Panel;
+with USBHID;
 
 -- XXX DEBUG ONLY XXX --
 with Ada.Text_IO; use Ada.Text_IO;
@@ -50,7 +52,7 @@ package body Nexus is
       -- directory and load configuration data from it. If there are more    --
       -- than one .iq files in the local directory or none, an empty string  --
       -- will be returned.                                                   --
-      Config_File_Name          : String := Get_Configuration_File_Name;
+      Config_File_Name : String := Get_Configuration_File_Name;
    begin
       Get_Config_From_File(Config_File_Name,
                            Adaptable_Parameters,
@@ -101,9 +103,18 @@ package body Nexus is
 
    procedure Connect_Button_Click_Event is
    begin
-      -- XXX DEBUG ONLY XXX --
-      Put_Line("Connect!");
-      -- XXX DEBUG ONLY XXX --
+      if Device.Connected = False then
+         begin
+            Device.Connect(Protocol, Datalink);
+         exception
+            when Device.Invalid_Datalink_Config =>
+               System_Messages_Panel.Append_Error("Connect Error: No data link configured" & CRLF);
+            when Device.Error_Opening_Device =>
+               System_Messages_Panel.Append_Error("Connect Error: Could not open: " & Datalink_Configuration_To_String(Datalink) & CRLF);
+            when Device.Invalid_Protocol =>
+               System_Messages_Panel.Append_Error("Connect Error: No protocol identified for device communication." & CRLF);
+         end;
+      end if;
    end;
 
    -----------------------------------
@@ -112,9 +123,10 @@ package body Nexus is
 
    procedure Disconnect_Button_Click_Event is
    begin
-      -- XXX DEBUG ONLY XXX --
-      Put_Line("Disconnect!");
-      -- XXX DEBUG ONLY XXX --
+      if Device.Connected = True then
+         Device.Disconnect;
+         System_Messages_Panel.Append_Message(Datalink_Configuration_To_String(Datalink) & " disconnected.");
+      end if;
    end;
 
    ---------------------------

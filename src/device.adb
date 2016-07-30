@@ -29,12 +29,12 @@ with System;        use System;
 
 package body Device is
 
-   Active_Protocol  : Protocol_Type;
+   Active_Protocol  : Protocol_Configuration;
    Active_Config    : Datalink_Configuration;
 
    USBHID_Device    : System.Address;
 
-   Connection_State : Connection_State_Type;
+   Connection_State : Connection_State_Type := Not_Connected;
 
    ---------------
    -- SEND_DATA --
@@ -61,7 +61,7 @@ package body Device is
    -- CONNECT --
    -------------
 
-   procedure Connect (Protocol : Protocol_Type;
+   procedure Connect (Protocol : Protocol_Configuration;
                       Config   : Datalink_Configuration) is
    begin
 
@@ -77,8 +77,8 @@ package body Device is
             -- TODO Not supported yet TODO --
             raise Invalid_DataLink_Config;
          when USB_HID =>
-            USBHID_Device := USBHID.Open(Unsigned_Short(Config.Vendor_ID),
-                                         Unsigned_Short(Config.Product_ID),
+            USBHID_Device := USBHID.Open(Config.Vendor_ID,
+                                         Config.Product_ID,
                                          System.Null_Address);
             if USBHID_Device = System.Null_Address then
                raise Error_Opening_Device;
@@ -128,7 +128,7 @@ package body Device is
          raise Connection_Not_Established;
       end if;
 
-      case Active_Protocol is
+      case Active_Protocol.Protocol is
          when NVP =>
             -- TODO --
             Null;

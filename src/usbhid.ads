@@ -20,6 +20,7 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
+with Interfaces;           use Interfaces;
 with Interfaces.C;         use Interfaces.C;
 with Interfaces.C.Strings;
 with System;
@@ -62,8 +63,8 @@ package USBHID is
    procedure Free_Enumeration (devs : access Device_Info);
    -- This function frees a linked list created by Enumerate --
 
-   function Open (Vendor_ID     : Unsigned_Short;
-                  Product_ID    : Unsigned_Short;
+   function Open (Vendor_ID     : Unsigned_16;
+                  Product_ID    : Unsigned_16;
                   Serial_Number : System.Address) return System.Address;
    -- Return Null: Failure --
 

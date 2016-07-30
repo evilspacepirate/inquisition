@@ -59,6 +59,12 @@ package body System_Messages_Panel is
       Iter : Gtk_Text_Iter;
    begin
       Get_End_Iter(Buffer, Iter);
+      Scroll_To_Mark(Text_View     => Text_View,
+                     Mark          => Create_Mark(Buffer, "", Iter),
+                     Within_Margin => 0.0,
+                     Use_Align     => True,
+                     XAlign        => 0.0,
+                     YAlign        => 1.0);
       Insert(Buffer, Iter, Text);
    end Append_Message;
 
@@ -66,6 +72,12 @@ package body System_Messages_Panel is
       Iter : Gtk_Text_Iter;
    begin
       Get_End_Iter(Buffer, Iter);
+      Scroll_To_Mark(Text_View     => Text_View,
+                     Mark          => Create_Mark(Buffer, "", Iter),
+                     Within_Margin => 0.0,
+                     Use_Align     => True,
+                     XAlign        => 0.0,
+                     YAlign        => 1.0);
       Insert_With_Tags(Buffer, Iter, Text, Error_Text_Tag);
    end Append_Error;
 

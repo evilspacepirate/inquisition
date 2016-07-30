@@ -50,7 +50,7 @@ package Device is
       Elements : Unsigned_16_Vectors.Vector;
    end Requests_Buffer;
 
-   procedure Connect(Protocol : Protocol_Type;
+   procedure Connect(Protocol : Protocol_Configuration;
                      Config   : Datalink_Configuration);
 
    procedure Disconnect;
