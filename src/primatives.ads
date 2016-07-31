@@ -33,15 +33,20 @@ package Primatives is
       Value : Unsigned_32;
    end record;
 
+
    package UnStr renames Ada.Strings.Unbounded;
    package String_Vectors is new Indefinite_Vectors (Natural, UnStr.Unbounded_String);
+   package Unsigned_8_Vectors is new Indefinite_Vectors (Natural, Unsigned_8);
+   use Unsigned_8_Vectors;
    package Unsigned_16_Vectors is new Indefinite_Vectors (Natural, Unsigned_16);
    package Name_Value_Pair_Vectors is new Indefinite_Vectors (Natural, Name_Value_Pair);
+   package Message_Vectors is new Indefinite_Vectors(Natural, Unsigned_8_Vectors.Vector);
 
    protected type Values_Buffer is
       procedure Add(Value : in Name_Value_Pair);
       procedure Set(Values : in Name_Value_Pair_Vectors.Vector);
       procedure Clear;
+      procedure Remove (Values : out Name_Value_Pair_Vectors.Vector);
       function Get_Values return Name_Value_Pair_Vectors.Vector;
    private
       Elements : Name_Value_Pair_Vectors.Vector;
@@ -51,9 +56,18 @@ package Primatives is
       procedure Add(Request : in Unsigned_16);
       procedure Set(Requests : in Unsigned_16_Vectors.Vector);
       procedure Clear;
+      procedure Remove (Values : out Unsigned_16_Vectors.Vector);
       function Get_Requests return Unsigned_16_Vectors.Vector;
    private
       Elements : Unsigned_16_Vectors.Vector;
    end Requests_Buffer;
+
+   protected type Messages_Buffer is
+      procedure Add (Message : Unsigned_8_Vectors.Vector);
+      procedure Remove (Values : out Message_Vectors.Vector);
+      procedure Clear;
+   private
+      Elements : Message_Vectors.Vector;
+   end Messages_Buffer;
 
 end Primatives;

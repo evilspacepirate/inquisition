@@ -55,6 +55,16 @@ package body Primatives is
          Elements.Clear;
       end Clear;
 
+      --------------------------
+      -- VALUES_BUFFER.REMOVE --
+      --------------------------
+
+      procedure Remove (Values : out Name_Value_Pair_Vectors.Vector) is
+      begin
+         Values := Elements;
+         Elements.Clear;
+      end Remove;
+
       ------------------------------
       -- VALUES_BUFFER.GET_VALUES --
       ------------------------------
@@ -90,14 +100,24 @@ package body Primatives is
          Elements := Requests;
       end Set;
 
-      ----------------------------
-      -- REQUESTs_BUFFER.REMOVE --
-      ----------------------------
+      ---------------------------
+      -- REQUESTS_BUFFER.CLEAR --
+      ---------------------------
 
       procedure Clear is
       begin
          Elements.Clear;
       end Clear;
+
+      ----------------------------
+      -- REQUESTS_BUFFER.REMOVE --
+      ----------------------------
+
+      procedure Remove (Values : out Unsigned_16_Vectors.Vector) is
+      begin
+         Values := Elements;
+         Elements.Clear;
+      end Remove;
 
       ----------------------------------
       -- REQUESTS_BUFFER.GET_REQUESTS --
@@ -109,5 +129,38 @@ package body Primatives is
       end Get_Requests;
 
    end Requests_Buffer;
+
+   protected body Messages_Buffer is
+
+      -------------------------
+      -- MESSAGES_BUFFER.ADD --
+      -------------------------
+
+      procedure Add (Message : Unsigned_8_Vectors.Vector) is
+      begin
+         Elements.Append(Message);
+      end Add;
+
+      ----------------------------
+      -- MESSAGES_BUFFER.REMOVE --
+      ----------------------------
+
+      procedure Remove (Values : out Message_Vectors.Vector) is
+          Value : Message_Vectors.Vector;
+      begin
+          Value := Elements;
+          Elements.Clear;
+      end Remove;
+
+      ---------------------------
+      -- MESSAGES_BUFFER.CLEAR --
+      ---------------------------
+
+      procedure Clear is
+      begin
+         Elements.Clear;
+      end Clear;
+
+   end Messages_Buffer;
 
 end Primatives;

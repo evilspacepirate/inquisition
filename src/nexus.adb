@@ -44,9 +44,12 @@ package body Nexus is
 
    IO_Error             : Boolean := False;
 
+   Values_Received      : Values_Buffer;
+
    task type Data_Requestor_Task is
       entry Set_Request_Period(Period : in Duration);
       entry Set_Requests(New_Requests : in Unsigned_16_Vectors.Vector);
+      entry Set_Requesting_Data(Enabled : in Boolean);
    end Data_Requestor_Task;
 
    task type Data_Interpreter_Task is
@@ -59,8 +62,9 @@ package body Nexus is
    -------------------------
 
    task body Data_Requestor_Task is
-      Request_Period : Duration;
-      Requests       : Requests_Buffer;
+      Request_Period  : Duration;
+      Requests        : Requests_Buffer;
+      Requesting_Data : Boolean := False;
 
       ------------------
       -- REQUEST_DATA --
@@ -94,7 +98,9 @@ package body Nexus is
 
    begin
       loop
-         Request_Data;
+         if Requesting_Data then
+            Request_Data;
+         end if;
          select
             accept Set_Request_Period(Period : in Duration) do
                Request_Period := Period;
@@ -102,6 +108,10 @@ package body Nexus is
          or
             accept Set_Requests(New_Requests : in Unsigned_16_Vectors.Vector) do
                Requests.Set(New_Requests);
+            end;
+         or
+            accept Set_Requesting_Data(Enabled : Boolean) do
+               Requesting_Data := Enabled;
             end;
          or
             delay Request_Period;
@@ -135,9 +145,49 @@ package body Nexus is
             end;
          end select;
 
-         -- Read and interpret data if available --
-         -- TODO --
-
+         if State = Started then
+            declare
+               Incoming_Data : Unsigned_8_Array := Device.Get_Data;
+            begin
+               if Incoming_Data'Length /= 0 then
+                  case Protocol.Name is
+                     when NVP_With_Routing =>
+                        for Index in Natural range Incoming_Data'First .. Incoming_Data'Last loop
+                           declare
+                              Message : Unsigned_8_Array := Interpret_Data_With_Routing(Incoming_Data(Index));
+                           begin
+                              if Message'Length /= 0 then
+                                 -- Valid message found --
+                                 -- TODO --
+                                 Null;
+                              end if;
+                           end;
+                        end loop;
+                     when NVP =>
+                        for Index in Natural range Incoming_Data'First .. Incoming_Data'Last loop
+                           declare
+                              Message : Unsigned_8_Array := Interpret_Data(Incoming_Data(Index));
+                           begin
+                              if Message'Length /= 0 then
+                                 -- Valid message found --
+                                 -- TODO --
+                                 Null;
+                              end if;
+                           end;
+                        end loop;
+                     when IQ =>
+                        -- TODO Not supported yet --
+                        abort Data_Interpreter_Task;
+                     when None =>
+                        -- Invalid protocol --
+                        abort Data_Interpreter_Task;
+                  end case;
+               end if;
+            end;
+         else
+            -- Not started. Take a nap. --
+            delay 0.1;
+         end if;
       end loop;
    exception
       when others =>
