@@ -107,24 +107,24 @@ package body Configuration is
    begin
       case Config.Datalink is
          when TCP_IPv4 =>
-            return "Data Link:  TCP  " &
+            return "TCP  " &
                    Trim_Outside_Whitespace(Unsigned_8'image(Config.Address_Octet_1)) & "." &
                    Trim_Outside_Whitespace(Unsigned_8'image(Config.Address_Octet_2)) & "." &
                    Trim_Outside_Whitespace(Unsigned_8'image(Config.Address_Octet_3)) & "." &
                    Trim_Outside_Whitespace(Unsigned_8'image(Config.Address_Octet_4)) & " : " &
                    Trim_Outside_Whitespace(Unsigned_16'image(Config.Port));
          when Serial =>
-            return "Data Link:  Serial  " &
+            return "Serial  " &
                    Trim_Outside_Whitespace(Natural'image(Config.Baud_Rate)) & " 8," &
                    Parity_Type'image(Config.Parity) & "," &
                    Stop_Bits_Type'image(Config.Stop_Bits) & "  " &
                    UnStr.To_String(Config.Device_Name);
          when USB_HID =>
-            return "Data Link:  USB HID  " &
+            return "USB HID  " &
                    "VID:  0x" & To_Hex_String(Config.Vendor_ID) &
                    "  PID:  0x" & To_Hex_String(Config.Product_ID);
          when None =>
-            return "Data Link:  Not Configured";
+            return "Not Configured";
       end case;
    end Datalink_Configuration_To_String;
 
@@ -1495,10 +1495,8 @@ package body Configuration is
       case Protocol.Protocol is
          when IQ =>
             UnStr.Append(Error_Text, "Error: Protocol type IQ not supported yet" & CRLF);
-         when NVP_With_Routing =>
-            UnStr.Append(Error_Text, "Error: Protocol type NVP with routing not supported yet" & CRLF);
-         when NVP =>
-            UnStr.Append(Error_Text, "Error: Protocol type NVP not supported yet" & CRLF);
+         when NVP_With_Routing | NVP =>
+            Null;
          when None =>
             UnStr.Append(Error_Text, "Error: No protocol declared." & CRLF);
       end case;

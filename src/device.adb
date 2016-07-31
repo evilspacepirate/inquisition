@@ -69,7 +69,11 @@ package body Device is
          raise Connection_Already_Established;
       end if;
 
-      case Active_Config.Datalink is
+      if Protocol.Protocol = None then
+         raise Invalid_Protocol;
+      end if;
+
+      case Config.Datalink is
          when TCP_IPv4 =>
             -- TODO Not supported yet TODO --
             raise Invalid_DataLink_Config;
@@ -90,6 +94,7 @@ package body Device is
       Active_Protocol  := Protocol;
       Active_Config    := Config;
       Connection_State := Connected;
+
    end;
 
    ----------------

@@ -30,7 +30,6 @@ with Raw_Data_Panel;
 with Status_Bar_Panel;
 with System;                use System;
 with System_Messages_Panel;
-with USBHID;
 
 -- XXX DEBUG ONLY XXX --
 with Ada.Text_IO; use Ada.Text_IO;
@@ -62,14 +61,18 @@ package body Nexus is
 
       if Config_File_Name /= "" then
          System_Messages_Panel.Append_Message("Loading configuration from " & Config_File_Name & CRLF);
-         System_Messages_Panel.Append_Error(UnStr.To_String(Configuration_File_Errors));
+         if Configuration_File_Errors /= "" then
+            System_Messages_Panel.Append_Error(UnStr.To_String(Configuration_File_Errors));
+         end if;
       else
          System_Messages_Panel.Append_Message("No configuration file found in current directory.");
       end if;
 
       Control_Panel.Set_Adaptable_Parameters(Adaptable_Parameters);
-      Status_Bar_Panel.Set_Configuration_Text(Datalink_Configuration_To_String(Datalink));
+      Status_Bar_Panel.Set_Configuration_Text("Data Link :  " & Datalink_Configuration_To_String(Datalink));
       Status_Bar_Panel.Set_Protocol_Text(Protocol_Configuration_To_String(Protocol));
+      Configuration_Panel.Set_Connect_Button_Enabled(True);
+      Configuration_Panel.Set_Disconnect_Button_Enabled(False);
 
       if Datalink.Datalink = None or
          Protocol.Protocol = None
@@ -103,6 +106,7 @@ package body Nexus is
 
    procedure Connect_Button_Click_Event is
    begin
+      System_Messages_Panel.Append_Message("Connect: " & Datalink_Configuration_To_String(Datalink) & CRLF);
       if Device.Connected = False then
          begin
             Device.Connect(Protocol, Datalink);
@@ -112,8 +116,13 @@ package body Nexus is
             when Device.Error_Opening_Device =>
                System_Messages_Panel.Append_Error("Connect Error: Could not open: " & Datalink_Configuration_To_String(Datalink) & CRLF);
             when Device.Invalid_Protocol =>
-               System_Messages_Panel.Append_Error("Connect Error: No protocol identified for device communication." & CRLF);
+               System_Messages_Panel.Append_Error("Connect Error: No protocol selected for data link" & CRLF);
          end;
+      end if;
+
+      if Device.Connected = True then
+         Configuration_Panel.Set_Connect_Button_Enabled(False);
+         Configuration_Panel.Set_Disconnect_Button_Enabled(True);
       end if;
    end;
 
@@ -125,7 +134,12 @@ package body Nexus is
    begin
       if Device.Connected = True then
          Device.Disconnect;
-         System_Messages_Panel.Append_Message(Datalink_Configuration_To_String(Datalink) & " disconnected.");
+         System_Messages_Panel.Append_Message("Disconnect: " & Datalink_Configuration_To_String(Datalink) & CRLF);
+      end if;
+
+      if Device.Connected = False then
+         Configuration_Panel.Set_Connect_Button_Enabled(True);
+         Configuration_Panel.Set_Disconnect_Button_Enabled(False);
       end if;
    end;
 
