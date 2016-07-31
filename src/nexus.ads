@@ -26,11 +26,13 @@ package Nexus is
 
    procedure Initialize;
    procedure Shutdown;
+   function Service return Boolean;
+   -- Must be called from the main thread for GTK to behave --
 
    private
 
-   procedure Connect_Button_Click_Event;
-   procedure Disconnect_Button_Click_Event;
+   procedure Connect_Event;
+   procedure Disconnect_Event;
 
    procedure Log_Data_Update_Event           (Parameter_Index : Natural;
                                               Logging_Data    : Boolean);

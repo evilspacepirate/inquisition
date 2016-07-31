@@ -28,9 +28,7 @@ with System;        use System;
 
 package body Device is
 
-   Active_Protocol  : Protocol_Configuration;
    Active_Config    : Datalink_Configuration;
-
    USBHID_Device    : System.Address;
 
    Connection_State : Connection_State_Type := Not_Connected;
@@ -55,6 +53,26 @@ package body Device is
             raise Invalid_DataLink_Config;
       end case;
    end Send_Data;
+
+   --------------
+   -- GET_DATA --
+   --------------
+
+   function Get_Data return Unsigned_8_Array is
+      Read_Buffer : Unsigned_8_Array(1 .. Maximum_Transmission_Unit);
+      No_Data     : Unsigned_8_Array(1 .. 0);
+      Result      : Int;
+   begin
+      Result := USBHID.Read_Timeout(USBHID_Device, Read_Buffer'Address, Maximum_Transmission_Unit, 0);
+
+      if Result = 0 then
+         return No_Data;
+      elsif Result = -1 then
+         raise Communications_Error;
+      else
+         return Read_Buffer(1 .. Natural(Result));
+      end if;
+   end Get_Data;
 
    -------------
    -- CONNECT --

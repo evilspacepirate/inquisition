@@ -21,6 +21,7 @@
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
 with Ada.Containers.Indefinite_Vectors; use Ada.Containers;
+with Device;
 with Interfaces;                        use Interfaces;
 with Primatives;                        use Primatives;
 
@@ -28,7 +29,6 @@ package NVP_Protocol is
 
    type Message_ID_Type is new Unsigned_8;
 
-   Maximum_Packet_Size      : constant := 2048;
    Header_Size              : constant := 1;
    Header_Size_With_Routing : constant := 3;
    CRC_Data_Start_Index     : constant := 3;
@@ -92,7 +92,7 @@ package NVP_Protocol is
 
    type Interpreter_Data is record
       State                        : Interpreter_State;
-      Message_Data_Buffer          : Unsigned_8_Array(1 .. Maximum_Packet_Size);
+      Message_Data_Buffer          : Unsigned_8_Array(1 .. Device.Maximum_Transmission_Unit);
       Byte_Index                   : Natural;
       Packet_Length                : Natural;
       Message_Data_Bytes_Remaining : Natural;

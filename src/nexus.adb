@@ -38,20 +38,21 @@ with Ada.Text_IO; use Ada.Text_IO;
 
 package body Nexus is
 
-   IO_Error : exception;
-
-   type Task_Status is (Active, Error);
-
    Datalink             : Datalink_Configuration;
    Protocol             : Protocol_Configuration;
    Adaptable_Parameters : Adaptable_Parameter_Record_Vectors.Vector;
 
-   Zombie_Task_Sleep_Period : constant Duration := 0.5;
+   IO_Error             : Boolean := False;
 
    task type Data_Requestor_Task is
       entry Set_Request_Period(Period : in Duration);
       entry Set_Requests(New_Requests : in Unsigned_16_Vectors.Vector);
    end Data_Requestor_Task;
+
+   task type Data_Interpreter_Task is
+      entry Start;
+      entry Stop;
+   end Data_Interpreter_Task;
 
    -------------------------
    -- DATA_REQUESTOR TASK --
@@ -84,10 +85,10 @@ package body Nexus is
                end;
             when IQ =>
                -- TODO Not supported yet --
-               raise IO_Error;
+               abort Data_Requestor_Task;
             when None =>
                -- Invalid protocol --
-               raise IO_Error;
+               abort Data_Requestor_Task;
          end case;
       end Request_Data;
 
@@ -106,7 +107,46 @@ package body Nexus is
             delay Request_Period;
          end select;
       end loop;
+   exception
+      when others =>
+         if Device.Connected then
+            -- Send signal to main thread to report an alert --
+            IO_Error := True;
+         end if;
+         abort Data_Requestor_Task;
    end Data_Requestor_Task;
+
+   ---------------------------
+   -- DATA_INTERPRETER_TASK --
+   ---------------------------
+
+   task body Data_Interpreter_Task is
+      type Task_State is (Started, Stopped);
+      State : Task_State := Stopped;
+   begin
+      loop
+         select
+            accept Start do
+               State := Started;
+            end;
+         or
+            accept Stop do
+               State := Stopped;
+            end;
+         end select;
+
+         -- Read and interpret data if available --
+         -- TODO --
+
+      end loop;
+   exception
+      when others =>
+         if Device.Connected then
+            -- Send signal to main thread to report an alert --
+            IO_Error := True;
+         end if;
+         abort Data_Interpreter_Task;
+   end Data_Interpreter_Task;
 
    ----------------
    -- INITIALIZE --
@@ -149,8 +189,8 @@ package body Nexus is
          Configuration_Panel.Set_Connect_Button_Enabled(True);
       end if;
 
-      Configuration_Panel.Assign_Event_Callbacks(Connect_Clicked    => Connect_Button_Click_Event'access,
-                                                 Disconnect_Clicked => Disconnect_Button_Click_Event'access);
+      Configuration_Panel.Assign_Event_Callbacks(Connect_Clicked    => Connect_Event'access,
+                                                 Disconnect_Clicked => Disconnect_Event'access);
       Control_Panel.Assign_Event_Callbacks(Log_Data_Updated         => Log_Data_Update_Event'access,
                                            Requesting_Data_Updated  => Requesting_Data_Update_Event'access,
                                            Set_Value_Clicked        => Set_Value_Click_Event'access,
@@ -167,11 +207,11 @@ package body Nexus is
       Device.Shutdown;
    end Shutdown;
 
-   --------------------------------
-   -- CONNECT_BUTTON_CLICK_EVENT --
-   --------------------------------
+   -------------------
+   -- CONNECT_EVENT --
+   -------------------
 
-   procedure Connect_Button_Click_Event is
+   procedure Connect_Event is
    begin
       System_Messages_Panel.Append_Message("Connect: " & Datalink_Configuration_To_String(Datalink) & CRLF);
 
@@ -197,15 +237,15 @@ package body Nexus is
       end if;
    end;
 
-   -----------------------------------
-   -- DISCONNECT_BUTTON_CLICK_EVENT --
-   -----------------------------------
+   ----------------------
+   -- DISCONNECT_EVENT --
+   ----------------------
 
-   procedure Disconnect_Button_Click_Event is
+   procedure Disconnect_Event is
    begin
       if Device.Connected = True then
          Device.Disconnect;
-         System_Messages_Panel.Append_Message("Disconnect: " & Datalink_Configuration_To_String(Datalink) & CRLF);
+         System_Messages_Panel.Append_Message("Disconnected: " & Datalink_Configuration_To_String(Datalink) & CRLF);
       end if;
 
       if Device.Connected = False then
@@ -276,5 +316,18 @@ package body Nexus is
                " New request period: " & Duration'Image(Period));
       -- XXX DEBUG ONLY XXX --
    end Request_Period_Update_Event;
+
+   -------------
+   -- Service --
+   -------------
+
+   function Service return Boolean is
+   begin
+      if IO_Error then
+         System_Messages_Panel.Append_Error("IO Error" & CRLF);
+         Disconnect_Event;
+      end if;
+      return True;
+   end Service;
 
 end Nexus;

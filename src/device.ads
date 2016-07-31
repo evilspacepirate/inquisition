@@ -27,6 +27,8 @@ with Primatives;                        use Primatives;
 
 package Device is
 
+   Maximum_Transmission_Unit      : constant := 2048;
+
    Error_Opening_Device           : exception;
    Communications_Error           : exception;
    Invalid_DataLink_Config        : exception;
@@ -43,6 +45,8 @@ package Device is
    -- Clean up any loose ends --
 
    procedure Send_Data(Data : Unsigned_8_Array);
+
+   function Get_Data return Unsigned_8_Array;
 
    function Connected return Boolean;
 

@@ -87,7 +87,7 @@ package USBHID is
    -- Return -1: Error                                             --
 
    function Read (Device : System.Address;
-                  Data   : access Unsigned_Char;
+                  Data   : System.Address;
                   Length : Size_t) return Int;
    -- Read an Input report from a HID device. --
    -- Return  N: 'N' bytes read --
