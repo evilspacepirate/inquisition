@@ -22,7 +22,6 @@
 -----------------------------------------------------------------
 with Configuration; use Configuration;
 with Interfaces.C;  use Interfaces.C;
-with NVP_Protocol;  use NVP_Protocol;
 with Util;          use Util;
 with USBHID;
 with System;        use System;
@@ -61,16 +60,10 @@ package body Device is
    -- CONNECT --
    -------------
 
-   procedure Connect (Protocol : Protocol_Configuration;
-                      Config   : Datalink_Configuration) is
+   procedure Connect (Config : Datalink_Configuration) is
    begin
-
       if Connection_State = Connected then
          raise Connection_Already_Established;
-      end if;
-
-      if Protocol.Protocol = None then
-         raise Invalid_Protocol;
       end if;
 
       case Config.Datalink is
@@ -91,7 +84,6 @@ package body Device is
             raise Invalid_DataLink_Config;
       end case;
 
-      Active_Protocol  := Protocol;
       Active_Config    := Config;
       Connection_State := Connected;
 
@@ -122,57 +114,6 @@ package body Device is
       Connection_State := Not_Connected;
    end Disconnect;
 
-   ---------------
-   -- SET_VALUE --
-   ---------------
-
-   procedure Set_Value(Parameter_ID : Unsigned_16;
-                       Value        : Unsigned_32) is
-   begin
-      if Connection_State = Not_Connected then
-         raise Connection_Not_Established;
-      end if;
-
-      case Active_Protocol.Protocol is
-         when NVP =>
-            -- TODO --
-            Null;
-         when NVP_With_Routing =>
-            -- TODO --
-            Null;
-         when IQ =>
-            -- TODO --
-            raise Invalid_Protocol;
-         when None =>
-            raise Invalid_Protocol;
-      end case;
-   end Set_Value;
-
-   --------------------
-   -- REQUEST_VALUES --
-   --------------------
-
-   procedure Request_Values(Parameter_IDs : Unsigned_16_Vectors.Vector) is
-   begin
-      if Connection_State = Not_Connected then
-         raise Connection_Not_Established;
-      end if;
-
-      case Active_Config.Datalink is
-         when TCP_IPv4 =>
-            -- TODO --
-            null;
-         when Serial =>
-            -- TODO --
-            null;
-         when USB_HID =>
-            -- TODO --
-            null;
-         when None =>
-            raise Connection_Not_Established;
-      end case;
-   end Request_Values;
-
    --------------
    -- SHUTDOWN --
    --------------
@@ -202,60 +143,6 @@ package body Device is
             return False;
       end case;
    end Connected;
-
-   -------------------
-   -- VALUES_BUFFER --
-   -------------------
-
-   protected body Values_Buffer is
-
-      -----------------------
-      -- VALUES_BUFFER.ADD --
-      -----------------------
-
-      procedure Add(Item : in Name_Value_Pair) is
-      begin
-         Elements.Append(Item);
-      end Add;
-
-      --------------------------
-      -- VALUES_BUFFER.REMOVE --
-      --------------------------
-
-      procedure Remove(Items : out Name_Value_Pair_Vectors.Vector) is
-      begin
-         Items := Elements;
-         Elements.Clear;
-      end Remove;
-
-   end Values_Buffer;
-
-   ---------------------
-   -- REQUESTS_BUFFER --
-   ---------------------
-
-   protected body Requests_Buffer is
-
-      -------------------------
-      -- REQUESTS_BUFFER.ADD --
-      -------------------------
-
-      procedure Add(Item : in Unsigned_16) is
-      begin
-         Elements.Append(Item);
-      end Add;
-
-      ----------------------------
-      -- REQUESTs_BUFFER.REMOVE --
-      ----------------------------
-
-      procedure Remove(Items : out Unsigned_16_Vectors.Vector) is
-      begin
-         Items := Elements;
-         Elements.Clear;
-      end Remove;
-
-   end Requests_Buffer;
 
 begin
 

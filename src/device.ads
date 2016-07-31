@@ -29,36 +29,15 @@ package Device is
 
    Error_Opening_Device           : exception;
    Communications_Error           : exception;
-   Invalid_Protocol               : exception;
    Invalid_DataLink_Config        : exception;
    Connection_Already_Established : exception;
    Connection_Not_Established     : exception;
 
    type Connection_State_Type is (Connected, Not_Connected);
 
-   protected type Values_Buffer is
-      procedure Add(Item : in Name_Value_Pair);
-      procedure Remove(Items : out Name_Value_Pair_Vectors.Vector);
-   private
-      Elements : Name_Value_Pair_Vectors.Vector;
-   end Values_Buffer;
-
-   protected type Requests_Buffer is
-      procedure Add(Item : in Unsigned_16);
-      procedure Remove(Items : out Unsigned_16_Vectors.Vector);
-   private
-      Elements : Unsigned_16_Vectors.Vector;
-   end Requests_Buffer;
-
-   procedure Connect(Protocol : Protocol_Configuration;
-                     Config   : Datalink_Configuration);
+   procedure Connect(Config : Datalink_Configuration);
 
    procedure Disconnect;
-
-   procedure Set_Value(Parameter_ID : Unsigned_16;
-                       Value        : Unsigned_32);
-
-   procedure Request_Values(Parameter_IDs : Unsigned_16_Vectors.Vector);
 
    procedure Shutdown;
    -- Clean up any loose ends --

@@ -38,4 +38,22 @@ package Primatives is
    package Unsigned_16_Vectors is new Indefinite_Vectors (Natural, Unsigned_16);
    package Name_Value_Pair_Vectors is new Indefinite_Vectors (Natural, Name_Value_Pair);
 
+   protected type Values_Buffer is
+      procedure Add(Value : in Name_Value_Pair);
+      procedure Set(Values : in Name_Value_Pair_Vectors.Vector);
+      procedure Clear;
+      function Get_Values return Name_Value_Pair_Vectors.Vector;
+   private
+      Elements : Name_Value_Pair_Vectors.Vector;
+   end Values_Buffer;
+
+   protected type Requests_Buffer is
+      procedure Add(Request : in Unsigned_16);
+      procedure Set(Requests : in Unsigned_16_Vectors.Vector);
+      procedure Clear;
+      function Get_Requests return Unsigned_16_Vectors.Vector;
+   private
+      Elements : Unsigned_16_Vectors.Vector;
+   end Requests_Buffer;
+
 end Primatives;

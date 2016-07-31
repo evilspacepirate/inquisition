@@ -132,17 +132,17 @@ package body Configuration is
    -- PROTOCOL_CONFIGURATION_TO_STRING --
    --------------------------------------
 
-   function Protocol_Configuration_To_String(Config : Protocol_Configuration) return String is
+   function Protocol_Configuration_To_String(Protocol : Protocol_Configuration) return String is
    begin
-      case Config.Protocol is
+      case Protocol.Name is
          when IQ =>
-            return "Protocol: IQ Source: " & Address_To_String(Config.Source) &
-                   " Destination: " & Address_To_String(Config.Destination);
+            return "Protocol: IQ Source: " & Address_To_String(Protocol.Source) &
+                   " Destination: " & Address_To_String(Protocol.Destination);
          when NVP =>
             return "Protocol: NVP";
          when NVP_With_Routing =>
-            return "Protocol: NVP Source: " & Address_To_String(Config.Source) &
-                   " Destination: " & Address_To_String(Config.Destination);
+            return "Protocol: NVP Source: " & Address_To_String(Protocol.Source) &
+                   " Destination: " & Address_To_String(Protocol.Destination);
          when None =>
             return "Protocol: None";
       end case;
@@ -1366,8 +1366,8 @@ package body Configuration is
    -----------------------------------
 
    function Get_Protocol_Config_From_File (File_Name : String) return Protocol_Configuration is
-      Config_File   : File_Type;
-      Configuration : Protocol_Configuration;
+      Config_File  : File_Type;
+      Protocol     : Protocol_Configuration;
    begin
       Open(Config_File, In_File, File_Name);
 
@@ -1377,9 +1377,9 @@ package body Configuration is
          begin
             -- Is this a non-comment line? --
             if Line(Line'First) /= '#' then
-               Configuration := Get_Protocol_Config_From_String(Line);
+               Protocol := Get_Protocol_Config_From_String(Line);
 
-               case Configuration.Protocol is
+               case Protocol.Name is
                   when None =>
                      null;
                   when others =>
@@ -1392,11 +1392,11 @@ package body Configuration is
          end;
       end loop;
       Close(Config_File);
-      return Configuration;
+      return Protocol;
    exception
       when Ada.Text_IO.Name_Error =>
          -- Could not open file --
-         return Configuration;
+         return Protocol;
       when others =>
          Close(Config_File);
          raise;
@@ -1492,7 +1492,7 @@ package body Configuration is
       end;
 
       -- TODO Errors for almost everything! TODO --
-      case Protocol.Protocol is
+      case Protocol.Name is
          when IQ =>
             UnStr.Append(Error_Text, "Error: Protocol type IQ not supported yet" & CRLF);
          when NVP_With_Routing | NVP =>
@@ -1678,5 +1678,23 @@ package body Configuration is
             return "";
       end case;
    end Address_To_String;
+
+   ---------------------------
+   -- ADDRESS_TO_UNSIGNED_8 --
+   ---------------------------
+
+   function Address_To_Unsigned_8 (Address : Address_Type) return Unsigned_8 is
+   begin
+      if Address.Size = Byte_Sized then
+         begin
+            return Unsigned_8(Address.Address);
+         exception
+            when Constraint_Error =>
+               raise Conversion_Failure_Address;
+         end;
+      else
+         raise Conversion_Failure_Address;
+      end if;
+   end Address_to_Unsigned_8;
 
 end Configuration;

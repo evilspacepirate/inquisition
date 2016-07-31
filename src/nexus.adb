@@ -26,6 +26,7 @@ with Configuration_Panel;
 with Control_Panel;
 with Device;
 with Primatives;            use Primatives;
+with NVP_Protocol;          use NVP_Protocol;
 with Raw_Data_Panel;
 with Status_Bar_Panel;
 with System;                use System;
@@ -37,9 +38,75 @@ with Ada.Text_IO; use Ada.Text_IO;
 
 package body Nexus is
 
+   IO_Error : exception;
+
+   type Task_Status is (Active, Error);
+
    Datalink             : Datalink_Configuration;
    Protocol             : Protocol_Configuration;
    Adaptable_Parameters : Adaptable_Parameter_Record_Vectors.Vector;
+
+   Zombie_Task_Sleep_Period : constant Duration := 0.5;
+
+   task type Data_Requestor_Task is
+      entry Set_Request_Period(Period : in Duration);
+      entry Set_Requests(New_Requests : in Unsigned_16_Vectors.Vector);
+   end Data_Requestor_Task;
+
+   -------------------------
+   -- DATA_REQUESTOR TASK --
+   -------------------------
+
+   task body Data_Requestor_Task is
+      Request_Period : Duration;
+      Requests       : Requests_Buffer;
+
+      ------------------
+      -- REQUEST_DATA --
+      ------------------
+
+      procedure Request_Data is
+      begin
+         case Protocol.Name is
+            when NVP =>
+               declare
+                  Request_Value_Packet : Unsigned_8_Array := Create_Request_Value_Packet(Requests.Get_Requests);
+               begin
+                  Device.Send_Data(Request_Value_Packet);
+               end;
+            when NVP_With_Routing =>
+               declare
+                  Request_Value_Packet : Unsigned_8_Array := Create_Request_Value_Packet(Requests.Get_Requests,
+                                                                                         Address_To_Unsigned_8(Protocol.Source),
+                                                                                         Address_To_Unsigned_8(Protocol.Destination));
+               begin
+                  Device.Send_Data(Request_Value_Packet);
+               end;
+            when IQ =>
+               -- TODO Not supported yet --
+               raise IO_Error;
+            when None =>
+               -- Invalid protocol --
+               raise IO_Error;
+         end case;
+      end Request_Data;
+
+   begin
+      loop
+         Request_Data;
+         select
+            accept Set_Request_Period(Period : in Duration) do
+               Request_Period := Period;
+            end;
+         or
+            accept Set_Requests(New_Requests : in Unsigned_16_Vectors.Vector) do
+               Requests.Set(New_Requests);
+            end;
+         or
+            delay Request_Period;
+         end select;
+      end loop;
+   end Data_Requestor_Task;
 
    ----------------
    -- INITIALIZE --
@@ -75,7 +142,7 @@ package body Nexus is
       Configuration_Panel.Set_Disconnect_Button_Enabled(False);
 
       if Datalink.Datalink = None or
-         Protocol.Protocol = None
+         Protocol.Name = None
       then
          Null;
       else
@@ -107,16 +174,20 @@ package body Nexus is
    procedure Connect_Button_Click_Event is
    begin
       System_Messages_Panel.Append_Message("Connect: " & Datalink_Configuration_To_String(Datalink) & CRLF);
+
+      if Protocol.Name = None then
+         System_Messages_Panel.Append_Error("Connect Error: No protocol selected for data link" & CRLF);
+         return;
+      end if;
+
       if Device.Connected = False then
          begin
-            Device.Connect(Protocol, Datalink);
+            Device.Connect(Datalink);
          exception
             when Device.Invalid_Datalink_Config =>
                System_Messages_Panel.Append_Error("Connect Error: No data link configured" & CRLF);
             when Device.Error_Opening_Device =>
                System_Messages_Panel.Append_Error("Connect Error: Could not open: " & Datalink_Configuration_To_String(Datalink) & CRLF);
-            when Device.Invalid_Protocol =>
-               System_Messages_Panel.Append_Error("Connect Error: No protocol selected for data link" & CRLF);
          end;
       end if;
 

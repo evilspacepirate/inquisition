@@ -72,8 +72,8 @@ package Configuration is
       Size    : Address_Size_Type;
    end record;
 
-   type Protocol_Configuration (Protocol : Protocol_Type := None) is record
-      case Protocol is
+   type Protocol_Configuration (Name : Protocol_Type := None) is record
+      case Name is
          when NVP_With_Routing | IQ =>
             Source       : Address_Type;
             Destination  : Address_Type;
@@ -121,7 +121,7 @@ package Configuration is
 
    function Datalink_Configuration_To_String(Config : Datalink_Configuration) return String;
 
-   function Protocol_Configuration_To_String(Config : Protocol_Configuration) return String;
+   function Protocol_Configuration_To_String(Protocol : Protocol_Configuration) return String;
 
    procedure Dump_Adaptable_Parameter(Parameter : Adaptable_Parameter_Record);
 
@@ -253,5 +253,7 @@ package Configuration is
    -- Convert an 8-bit, 16-bit, or 32-bit hexidecimal address string to an Address_Type --
 
    function Address_To_String(Address : Address_Type) return String;
+
+   function Address_To_Unsigned_8(Address : Address_Type) return Unsigned_8;
 
 end Configuration;
