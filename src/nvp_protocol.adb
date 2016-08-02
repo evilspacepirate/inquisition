@@ -25,15 +25,24 @@ with Util;       use Util;
 
 package body NVP_Protocol is
 
-   Message_ID_Field_Length       : constant := 1;
-   CRC_Field_Length              : constant := 1;
-   Length_Field_Length           : constant := 2;
-   Start_Of_Message_Field_Length : constant := 2;
-   Source_Field_Length           : constant := 1;
-   Destination_Field_Length      : constant := 1;
+   Message_ID_Field_Length           : constant := 1;
+   CRC_Field_Length                  : constant := 1;
+   Length_Field_Length               : constant := 2;
+   Start_Of_Message_Field_Length     : constant := 2;
+   Source_Field_Length               : constant := 1;
+   Destination_Field_Length          : constant := 1;
 
-   Start_Of_Message_Byte_1       : constant Unsigned_8 := 16#55#;
-   Start_Of_Message_Byte_2       : constant Unsigned_8 := 16#AA#;
+   Packet_ID_Index_Without_Routing   : constant := 5;
+   Packet_ID_Index_With_Routing      : constant := 7;
+
+   Data_Start_Index_Without_Routing  : constant := 6;
+   Data_Start_Index_With_Routing     : constant := 8;
+
+   Length_Low_Byte_Index             : constant := 3;
+   Length_High_Byte_Index            : constant := 4;
+
+   Start_Of_Message_Byte_1           : constant Unsigned_8 := 16#55#;
+   Start_Of_Message_Byte_2           : constant Unsigned_8 := 16#AA#;
 
    -----------------
    -- COMPUTE_CRC --
@@ -373,5 +382,47 @@ package body NVP_Protocol is
             end if;
       end case;
    end Interpret_Data_With_Routing;
+
+   --------------------------------
+   -- GET_PACKET_ID_WITH_ROUTING --
+   --------------------------------
+
+   function Get_Packet_ID_With_Routing (Input : Unsigned_8_Array) return Message_ID_Type is
+   begin
+      return Message_ID_Type(Input(Packet_ID_Index_With_Routing));
+   end Get_Packet_ID_With_Routing;
+
+   -------------------
+   -- GET_PACKET_ID --
+   -------------------
+
+   function Get_Packet_ID (Input : Unsigned_8_Array) return Message_ID_Type is
+   begin
+      return Message_ID_Type(Input(Packet_ID_Index_Without_Routing));
+   end Get_Packet_ID;
+
+   ----------------------------------
+   -- GET_PACKET_DATA_WITH_ROUTING --
+   ----------------------------------
+
+   function Get_Packet_Data_With_Routing (Input : Unsigned_8_Array) return Unsigned_8_Array is
+      Length : Natural := Natural(Unsigned_16(Input(Length_Low_Byte_Index)) +
+                                  Shift_Left(Unsigned_16(Input(Length_High_Byte_Index)), 8));
+      Data_Start : constant := Data_Start_Index_With_Routing;
+   begin
+      return Input(Data_Start .. Data_Start + Length);
+   end Get_Packet_Data_With_Routing;
+
+   ---------------------
+   -- GET_PACKET_DATA --
+   ---------------------
+
+   function Get_Packet_Data (Input : Unsigned_8_Array) return Unsigned_8_Array is
+      Length : Natural := Natural(Unsigned_16(Input(Length_Low_Byte_Index)) +
+                                  Shift_Left(Unsigned_16(Input(Length_High_Byte_Index)), 8));
+      Data_Start : constant := Data_Start_Index_Without_Routing;
+   begin
+      return Input(Data_Start .. Data_Start + Length);
+   end Get_Packet_Data;
 
 end NVP_Protocol;

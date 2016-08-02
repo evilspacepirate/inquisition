@@ -133,6 +133,7 @@ package body Nexus is
    task body Data_Interpreter_Task is
       type Task_State is (Started, Stopped);
       State : Task_State := Stopped;
+
    begin
       loop
          select
