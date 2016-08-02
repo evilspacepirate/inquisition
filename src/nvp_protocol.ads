@@ -38,7 +38,8 @@ package NVP_Protocol is
    Start_Of_Message_2       : constant Unsigned_8 := 16#AA#;
 
    Write_Data_ID            : constant Message_ID_Type := 0;
-   Read_Data_ID             : constant Message_ID_Type := 1;
+   NVP_Data_ID              : constant Message_ID_Type := 1;
+   Request_Data_ID          : constant Message_ID_Type := 4;
 
    function Envelope_Message_Data(Message_ID : Message_ID_Type;
                                   Data       : Unsigned_8_Array) return Unsigned_8_Array;
@@ -78,19 +79,19 @@ package NVP_Protocol is
    -- Reads bytes off an input stream and returns a byte array containing a --
    -- complete message if one is found                                      --
 
-   function Get_Packet_ID_With_Routing (Input : Unsigned_8_Array) return Message_ID_Type;
-   -- Get the packet ID of a packet containing routing fields in its header. This --
+   function Get_Message_ID_With_Routing (Input : Unsigned_8_Array) return Message_ID_Type;
+   -- Get the message ID of a packet containing routing fields in its header. This --
    -- function does not validate the correctness of a packet format.              --
 
-   function Get_Packet_ID (Input : Unsigned_8_Array) return Message_ID_Type;
-   -- Get the packet ID of a packet that does not contain routing fields in its header. --
+   function Get_Message_ID (Input : Unsigned_8_Array) return Message_ID_Type;
+   -- Get the message ID of a packet that does not contain routing fields in its header. --
    -- This function does not validate the correctness of a packet format.               --
 
-   function Get_Packet_Data_With_Routing (Input : Unsigned_8_Array) return Unsigned_8_Array;
+   function Get_Message_Data_With_Routing (Input : Unsigned_8_Array) return Unsigned_8_Array;
    -- Get the data field of a packet containing routing fields in its header. This --
    -- function does not validate the correctness of a packet format.  --
 
-   function Get_Packet_Data (Input : Unsigned_8_Array) return Unsigned_8_Array;
+   function Get_Message_Data (Input : Unsigned_8_Array) return Unsigned_8_Array;
    -- Get the data field of a packet that does not contain routing fields in its header. This --
    -- function does not validate the correctness of a packet format.  --
 

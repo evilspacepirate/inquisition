@@ -163,4 +163,17 @@ package body Primatives is
 
    end Messages_Buffer;
 
+   --------------------------------
+   -- UNSIGNED_8_ARRAY_TO_VECTOR --
+   --------------------------------
+
+   function Unsigned_8_Array_To_Vector (Input : Unsigned_8_Array) return Unsigned_8_Vectors.Vector is
+      Output : Unsigned_8_Vectors.Vector;
+   begin
+      for Index in Natural range Input'First .. Input'Last loop
+         Output.Append(Input(Index));
+      end loop;
+      return Output;
+   end Unsigned_8_Array_To_Vector;
+
 end Primatives;

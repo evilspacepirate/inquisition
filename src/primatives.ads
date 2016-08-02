@@ -70,4 +70,6 @@ package Primatives is
       Elements : Message_Vectors.Vector;
    end Messages_Buffer;
 
+   function Unsigned_8_Array_To_Vector (Input : Unsigned_8_Array) return Unsigned_8_Vectors.Vector;
+
 end Primatives;

@@ -38,13 +38,16 @@ with Ada.Text_IO; use Ada.Text_IO;
 
 package body Nexus is
 
-   Datalink             : Datalink_Configuration;
-   Protocol             : Protocol_Configuration;
-   Adaptable_Parameters : Adaptable_Parameter_Record_Vectors.Vector;
+   Datalink                   : Datalink_Configuration;
+   Protocol                   : Protocol_Configuration;
+   Adaptable_Parameters       : Adaptable_Parameter_Record_Vectors.Vector;
 
-   IO_Error             : Boolean := False;
+   IO_Error                   : Boolean := False;
 
-   Values_Received      : Values_Buffer;
+   Values_Received            : Values_Buffer;
+
+   Received_Message_Buffer    : Messages_Buffer;
+   Transmitted_Message_Buffer : Messages_Buffer;
 
    task type Data_Requestor_Task is
       entry Set_Request_Period(Period : in Duration);
@@ -134,6 +137,25 @@ package body Nexus is
       type Task_State is (Started, Stopped);
       State : Task_State := Stopped;
 
+      --------------------
+      -- HANDLE_MESSAGE --
+      --------------------
+
+      procedure Handle_Message (ID           : Message_ID_Type;
+                                Data         : Unsigned_8_Array;
+                                Full_Message : Unsigned_8_Array) is
+      begin
+         Received_Message_Buffer.Add(Unsigned_8_Array_To_Vector(Full_Message));
+         case ID is
+            when NVP_Data_ID =>
+               -- TODO Get the name and value --
+               Null;
+            when others =>
+               -- Ignore the message --
+               Null;
+         end case;
+      end Handle_Message;
+
    begin
       loop
          select
@@ -159,8 +181,12 @@ package body Nexus is
                            begin
                               if Message'Length /= 0 then
                                  -- Valid message found --
-                                 -- TODO --
-                                 Null;
+                                 declare
+                                    ID   : Message_ID_Type  := Get_Message_ID_With_Routing(Message);
+                                    Data : Unsigned_8_Array := Get_Message_Data_With_Routing(Message);
+                                 begin
+                                    Handle_Message(ID, Data, Message);
+                                 end;
                               end if;
                            end;
                         end loop;
@@ -171,7 +197,12 @@ package body Nexus is
                            begin
                               if Message'Length /= 0 then
                                  -- Valid message found --
-                                 -- TODO --
+                                 declare
+                                    ID   : Message_ID_Type  := Get_Message_ID(Message);
+                                    Data : Unsigned_8_Array := Get_Message_Data(Message);
+                                 begin
+                                    Handle_Message(ID, Data, Message);
+                                 end;
                                  Null;
                               end if;
                            end;
