@@ -20,21 +20,27 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
-with Glib;                use Glib;
+with Ada.Calendar;          use Ada.Calendar;
+with Glib;                  use Glib;
 with Glib.Properties;
-with Gtk.Box;             use Gtk.Box;
-with Gtk.Enums;           use Gtk.Enums;
-with Gtk.Scrolled_Window; use Gtk.Scrolled_Window;
-with Gtk.Text_Buffer;     use Gtk.Text_Buffer;
-with Gtk.Text_Iter;       use Gtk.Text_Iter;
-with Gtk.Text_Tag;        use Gtk.Text_Tag;
-with Gtk.Text_View;       use Gtk.Text_View;
+with GNAT.Calendar.Time_IO;
+with Gtk.Box;               use Gtk.Box;
+with Gtk.Enums;             use Gtk.Enums;
+with Gtk.Scrolled_Window;   use Gtk.Scrolled_Window;
+with Gtk.Text_Buffer;       use Gtk.Text_Buffer;
+with Gtk.Text_Iter;         use Gtk.Text_Iter;
+with Gtk.Text_Tag;          use Gtk.Text_Tag;
+with Gtk.Text_View;         use Gtk.Text_View;
+with Primatives;            use Primatives;
+with Util;                  use Util;
 
 package body Raw_Data_Panel is
-   
+
+   package Time_IO renames GNAT.Calendar.Time_IO;
+
    Data_Sent_Color           : constant String := "#254A64";
    Data_Received_Color       : constant String := "#484D53";
-   
+
    Received_Data_Text_Tag    : Gtk_Text_Tag;
    Sent_Data_Text_Tag        : Gtk_Text_Tag;
 
@@ -54,13 +60,13 @@ package body Raw_Data_Panel is
       Gtk_New(Raw_Data_Window);
       Gtk_New(Buffer);
       Gtk_New(Text_View, Buffer);
-      
+
       Received_Data_Text_Tag := Create_Tag(Buffer, "Data_Received");
       Sent_Data_Text_Tag     := Create_Tag(Buffer, "Data_Sent");
 
       Glib.Properties.Set_Property(Received_Data_Text_Tag, Foreground_Property, Data_Received_Color);
       Glib.Properties.Set_Property(Sent_Data_Text_Tag, Foreground_Property, Data_Sent_Color);
-      
+
       Set_Policy(Raw_Data_Window, Policy_Automatic, Policy_Automatic);
       Set_Editable(Text_View, False);
 
@@ -68,7 +74,52 @@ package body Raw_Data_Panel is
 
       Pack_Start(Box, Control_Box,     False, False);
       Pack_End  (Box, Raw_Data_Window, True,  True);
-      
+
    end Create;
+
+   ---------------------------
+   -- ADD_RECEIVED_MESSAGES --
+   ---------------------------
+
+   procedure Add_Received_Messages(Messages : Message_Record_Vectors.Vector) is
+      use Message_Record_Vectors;
+      Iter : Gtk_Text_Iter;
+   begin
+      for Index in Natural range 0 .. Natural(Length(Messages)) loop
+         Insert_With_Tags(Buffer, Iter, Time_IO.Image(Clock, "%H%M:%S %Y.%m.%d :  "), Received_Data_Text_Tag);
+         Insert_With_Tags(Buffer, Iter, To_Hex(Element(Messages, Index).Message), Received_Data_Text_Tag);
+      end loop;
+
+      Get_End_Iter(Buffer, Iter);
+      Scroll_To_Mark(Text_View     => Text_View,
+                     Mark          => Create_Mark(Buffer, "", Iter),
+                     Within_Margin => 0.0,
+                     Use_Align     => True,
+                     XAlign        => 0.0,
+                     YAlign        => 1.0);
+   end Add_Received_Messages;
+
+   ------------------------------
+   -- ADD_TRANSMITTED_MESSAGES --
+   ------------------------------
+
+   procedure Add_Transmitted_Messages(Messages : Message_Record_Vectors.Vector) is
+      use Message_Record_Vectors;
+      Iter : Gtk_Text_Iter;
+   begin
+      for Index in Natural range 0 .. Natural(Length(Messages)) loop
+         Insert_With_Tags(Buffer, Iter, Time_IO.Image(Clock, "%H%M:%S %Y.%m.%d :  "), Received_Data_Text_Tag);
+         Insert_With_Tags(Buffer, Iter, To_Hex(Element(Messages, Index).Message), Received_Data_Text_Tag);
+      end loop;
+
+      Get_End_Iter(Buffer, Iter);
+      Scroll_To_Mark(Text_View     => Text_View,
+                     Mark          => Create_Mark(Buffer, "", Iter),
+                     Within_Margin => 0.0,
+                     Use_Align     => True,
+                     XAlign        => 0.0,
+                     YAlign        => 1.0);
+
+   end Add_Transmitted_Messages;
 
 end Raw_Data_Panel;

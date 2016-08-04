@@ -20,6 +20,7 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
+with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Containers.Indefinite_Vectors; use Ada.Containers;
 with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
 with Interfaces;                        use Interfaces;
@@ -33,14 +34,19 @@ package Primatives is
       Value : Unsigned_32;
    end record;
 
-
    package UnStr renames Ada.Strings.Unbounded;
    package String_Vectors is new Indefinite_Vectors (Natural, UnStr.Unbounded_String);
    package Unsigned_8_Vectors is new Indefinite_Vectors (Natural, Unsigned_8);
    use Unsigned_8_Vectors;
    package Unsigned_16_Vectors is new Indefinite_Vectors (Natural, Unsigned_16);
    package Name_Value_Pair_Vectors is new Indefinite_Vectors (Natural, Name_Value_Pair);
-   package Message_Vectors is new Indefinite_Vectors(Natural, Unsigned_8_Vectors.Vector);
+
+   type Message_Record is record
+      Message    : Unsigned_8_Vectors.Vector;
+      Time_Stamp : Time;
+   end record;
+
+   package Message_Record_Vectors is new Indefinite_Vectors(Natural, Message_Record);
 
    protected type Values_Buffer is
       procedure Add(Value : in Name_Value_Pair);
@@ -62,13 +68,13 @@ package Primatives is
       Elements : Unsigned_16_Vectors.Vector;
    end Requests_Buffer;
 
-   protected type Messages_Buffer is
-      procedure Add (Message : Unsigned_8_Vectors.Vector);
-      procedure Remove (Values : out Message_Vectors.Vector);
+   protected type Message_Records_Buffer is
+      procedure Add (Message : Message_Record);
+      procedure Remove (Values : out Message_Record_Vectors.Vector);
       procedure Clear;
    private
-      Elements : Message_Vectors.Vector;
-   end Messages_Buffer;
+      Elements : Message_Record_Vectors.Vector;
+   end Message_Records_Buffer;
 
    function Unsigned_8_Array_To_Vector (Input : Unsigned_8_Array) return Unsigned_8_Vectors.Vector;
 

@@ -20,6 +20,7 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
+with Ada.Calendar;          use Ada.Calendar;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Configuration;         use Configuration;
 with Configuration_Panel;
@@ -46,8 +47,8 @@ package body Nexus is
 
    Values_Received            : Values_Buffer;
 
-   Received_Message_Buffer    : Messages_Buffer;
-   Transmitted_Message_Buffer : Messages_Buffer;
+   Received_Message_Buffer    : Message_Records_Buffer;
+   Transmitted_Message_Buffer : Message_Records_Buffer;
 
    task type Data_Requestor_Task is
       entry Set_Request_Period(Period : in Duration);
@@ -145,7 +146,8 @@ package body Nexus is
                                 Data         : Unsigned_8_Array;
                                 Full_Message : Unsigned_8_Array) is
       begin
-         Received_Message_Buffer.Add(Unsigned_8_Array_To_Vector(Full_Message));
+         Received_Message_Buffer.Add(Message_Record'(Message    => Unsigned_8_Array_To_Vector(Full_Message),
+                                                     Time_Stamp => Clock));
          case ID is
             when NVP_Data_ID =>
                -- TODO Get the name and value --
@@ -185,6 +187,8 @@ package body Nexus is
                                     ID   : Message_ID_Type  := Get_Message_ID_With_Routing(Message);
                                     Data : Unsigned_8_Array := Get_Message_Data_With_Routing(Message);
                                  begin
+                                    -- TODO Check source address and make sure        --
+                                    --      it matches the address of the Inquisition --
                                     Handle_Message(ID, Data, Message);
                                  end;
                               end if;

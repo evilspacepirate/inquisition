@@ -20,7 +20,8 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
-with Gtk.Box; use Gtk.Box;
+with Gtk.Box;    use Gtk.Box;
+with Primatives; use Primatives;
 
 package Raw_Data_Panel is
 
@@ -28,5 +29,9 @@ package Raw_Data_Panel is
 
    procedure Create;
    -- Builds up the Raw Data Panel window --
+
+   procedure Add_Received_Messages(Messages : Message_Record_Vectors.Vector);
+
+   procedure Add_Transmitted_Messages(Messages : Message_Record_Vectors.Vector);
 
 end Raw_Data_Panel;
