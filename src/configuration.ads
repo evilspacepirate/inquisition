@@ -243,12 +243,6 @@ package Configuration is
                                   Protocol             : out Protocol_Configuration;
                                   Error_Text           : out UnStr.Unbounded_String);
 
-   function To_Hex_String(Input : Unsigned_8) return String;
-
-   function To_Hex_String(Input : Unsigned_16) return String;
-
-   function To_Hex_String(Input : Unsigned_32) return String;
-
    function To_Address_Type(Text : String) return Address_Type;
    -- Convert an 8-bit, 16-bit, or 32-bit hexidecimal address string to an Address_Type --
 

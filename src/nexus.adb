@@ -20,23 +20,26 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
-with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
-with Configuration;         use Configuration;
+with Ada.Containers.Indefinite_Vectors; use Ada.Containers;
+with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
+with Configuration;                     use Configuration;
 with Configuration_Panel;
 with Control_Panel;
 with Device;
-with Primatives;            use Primatives;
-with NVP_Protocol;          use NVP_Protocol;
+with Primatives;                        use Primatives;
+with NVP_Protocol;                      use NVP_Protocol;
 with Raw_Data_Panel;
 with Status_Bar_Panel;
-with System;                use System;
+with System;                            use System;
 with System_Messages_Panel;
+with Util;                              use Util;
 
 -- XXX DEBUG ONLY XXX --
 with Ada.Text_IO; use Ada.Text_IO;
 -- XXX DEBUG ONLY XXX --
 
 package body Nexus is
+
 
    Datalink                   : Datalink_Configuration;
    Protocol                   : Protocol_Configuration;
@@ -55,10 +58,16 @@ package body Nexus is
       entry Set_Requesting_Data(Enabled : in Boolean);
    end Data_Requestor_Task;
 
+   type Data_Requestor_Task_Access is access Data_Requestor_Task;
+
+   package Data_Requestor_Task_Vectors is new Indefinite_Vectors(Natural, Data_Requestor_Task_Access);
+
    task type Data_Interpreter_Task is
       entry Start;
       entry Stop;
    end Data_Interpreter_Task;
+
+   Data_Requestor_Tasks : Data_Requestor_Task_Vectors.Vector;
 
    -------------------------
    -- DATA_REQUESTOR TASK --
@@ -102,7 +111,11 @@ package body Nexus is
    begin
       loop
          if Requesting_Data then
+            -- XXX XXX DEBUG ONLY XXX XXX --
+            -- XXX XXX DEBUG ONLY XXX XXX --
             Request_Data;
+            -- XXX XXX DEBUG ONLY XXX XXX --
+            -- XXX XXX DEBUG ONLY XXX XXX --
          end if;
          select
             accept Set_Request_Period(Period : in Duration) do
@@ -218,6 +231,7 @@ package body Nexus is
             end;
          else
             -- Not started. Take a nap. --
+            -- XXX TAKE OUT XXX --
             delay 0.1;
          end if;
       end loop;
@@ -278,7 +292,7 @@ package body Nexus is
                                            Set_Value_Clicked        => Set_Value_Click_Event'access,
                                            Parameter_Double_Clicked => Double_Click_On_Parameter_Event'access,
                                            Request_Period_Updated   => Request_Period_Update_Event'access);
-   end;
+   end Initialize;
 
    --------------
    -- SHUTDOWN --
@@ -317,7 +331,33 @@ package body Nexus is
          Configuration_Panel.Set_Connect_Button_Enabled(False);
          Configuration_Panel.Set_Disconnect_Button_Enabled(True);
       end if;
-   end;
+
+
+
+      -- XXX XXX DUMP AP CONFIGURATION XXX XXX --
+
+      for Index in Natural range 0 .. Natural(Adaptable_Parameters.Length) - 1 loop
+         Put(Natural'Image(Index) & ": ");
+         Put_Hex(Adaptable_Parameters.Element(Index).Unique_Identifier);
+         put("  " & UnStr.To_String(Adaptable_Parameters.Element(Index).Friendly_Name));
+         put("  " & Duration'Image(String_To_Duration(UnStr.To_String(Adaptable_parameters.Element(Index).Sample_Period))));
+         New_Line;
+
+         declare
+            Parameter_IDs : Unsigned_16_Vectors.Vector;
+            Sample_Period : Duration                   := String_To_Duration(UnStr.To_String(Adaptable_parameters.Element(Index).Sample_Period))
+            New_Requestor : access Data_Requestor_Task := new Data_Requestor_Task;
+         begin
+            Parameters.Append(Adaptable_Parameters(Element(Index).Unique_Identifier))
+            New_Requestor'all.Set_Request_Period(Sample_Period);
+            New_Requestor'all.Set_Requests(Parameter_IDs);
+            New_Requestor'all.Set_Requesting_Data(True);
+            Data_Requestor_Tasks.Append(New_Requestor);
+         end;
+
+      end loop;
+
+   end Connect_Event;
 
    ----------------------
    -- DISCONNECT_EVENT --
@@ -334,7 +374,7 @@ package body Nexus is
          Configuration_Panel.Set_Connect_Button_Enabled(True);
          Configuration_Panel.Set_Disconnect_Button_Enabled(False);
       end if;
-   end;
+   end Disconnect_Event;
 
    ---------------------------
    -- LOG_DATA_UPDATE_EVENT --

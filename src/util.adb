@@ -94,8 +94,35 @@ package body Util is
       Length := 6 - Start;
       Output(3 - Length .. 2) := Hex(6 - Length .. 5);
       return Output;
-   end to_hex;
-   
+   end To_Hex;
+
+   ------------
+   -- TO_HEX --
+   ------------
+
+   function To_Hex(Input : Unsigned_16) return String is
+      High_Byte : Unsigned_8 := Unsigned_8(Shift_Right(Input, 8));
+      Low_Byte  : Unsigned_8 := Unsigned_8(Input and 16#FF#);
+   begin
+      return To_Hex(High_Byte) & To_Hex(Low_Byte);
+   end To_Hex;
+
+   ------------
+   -- TO_HEX --
+   ------------
+
+   function To_Hex(Input : Unsigned_32) return String is
+     Highest_Byte : Unsigned_8 := Unsigned_8(Shift_Right(Input, 24));
+     High_Byte    : Unsigned_8 := Unsigned_8(Shift_Right(Input, 16));
+     Low_Byte     : Unsigned_8 := Unsigned_8(Shift_Right(Input,  8));
+     Lowest_Byte  : Unsigned_8 := Unsigned_8(Input and 16#FF#);
+   begin
+     return To_Hex(Highest_Byte) &
+            To_Hex(High_Byte) &
+            To_Hex(Low_Byte) &
+            To_Hex(Lowest_Byte);
+   end To_Hex;
+
    -------------
    -- PUT_HEX --
    -------------
@@ -117,7 +144,19 @@ package body Util is
      Length := 6 - Start;
      Output(3 - Length .. 2) := Hex(6 - Length .. 5);
      Put(Output);
-   end put_hex;
+   end Put_Hex;
+
+   -------------
+   -- PUT_HEX --
+   -------------
+
+   procedure Put_Hex(Input : Unsigned_16) is
+      High_Byte : Unsigned_8 := Unsigned_8(Shift_Right(Input, 8));
+      Low_Byte  : Unsigned_8 := Unsigned_8(Input and 16#FF#);
+   begin
+      Put_Hex(High_Byte);
+      Put_Hex(Low_Byte);
+   end Put_Hex;
 
    ----------
    -- DUMP --
@@ -130,6 +169,6 @@ package body Util is
          Put_Hex(Input(Index));
          Put(" ");
       end loop;
-   end dump;
+   end Dump;
 
 end Util;

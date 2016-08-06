@@ -33,8 +33,13 @@ package Util is
    function Split_String(Text : String; Seperators : String) return String_Vectors.Vector;
 
    function To_Hex(Input : Unsigned_8) return String;
+   function To_Hex(Input : Unsigned_16) return String;
+   function To_Hex(Input : Unsigned_32) return String;
 
    procedure Put_Hex(Input : Unsigned_8);
+   -- Send value to STDOUT in hexidecimal --
+
+   procedure Put_Hex(Input : Unsigned_16);
    -- Send value to STDOUT in hexidecimal --
 
    procedure Dump(Input : Unsigned_8_Array);

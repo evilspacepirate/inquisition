@@ -49,56 +49,6 @@ package body Configuration is
    NVP_With_Routing_Protocol_Tag : constant String    := "Protocol NVP Routing";
    IQ_Protocol_Tag               : constant String    := "Protocol IQ";
 
-   -------------------
-   -- TO_HEX_STRING --
-   -------------------
-
-   function To_Hex_String(Input : Unsigned_8) return String is
-      Hex    : String(1 .. 6);
-      Output : String(1 .. 2);
-      Start  : Integer;
-      Length : Integer;
-   begin
-      Unsigned_8_IO.put(To => Hex, Item => Input, Base => 16);
-      for Index in 1 .. 6 loop
-         if Hex(Index) = '#' then
-            Start := Index + 1;
-            exit;
-         end if;
-      end loop;
-      Output := "00";
-      Length := 6 - Start;
-      Output(3 - Length .. 2) := Hex(6 - Length .. 5);
-      return Output;
-   end To_Hex_String;
-
-   -------------------
-   -- TO_HEX_STRING --
-   -------------------
-
-   function To_Hex_String(Input : Unsigned_16) return String is
-     High_Byte : Unsigned_8 := Unsigned_8(Shift_Right(Input, 8));
-     Low_Byte  : Unsigned_8 := Unsigned_8(Input and 16#FF#);
-   begin
-     return To_Hex_String(High_Byte) & To_Hex_String(Low_Byte);
-   end To_Hex_String;
-
-   -------------------
-   -- TO_HEX_STRING --
-   -------------------
-
-   function To_Hex_String(Input : Unsigned_32) return String is
-     Highest_Byte : Unsigned_8 := Unsigned_8(Shift_Right(Input, 24));
-     High_Byte    : Unsigned_8 := Unsigned_8(Shift_Right(Input, 16));
-     Low_Byte     : Unsigned_8 := Unsigned_8(Shift_Right(Input,  8));
-     Lowest_Byte  : Unsigned_8 := Unsigned_8(Input and 16#FF#);
-   begin
-     return To_Hex_String(Highest_Byte) &
-            To_Hex_String(High_Byte) &
-            To_Hex_String(Low_Byte) &
-            To_Hex_String(Lowest_Byte);
-   end To_Hex_String;
-
    --------------------------------------
    -- DATALINK_CONFIGURATION_TO_STRING --
    --------------------------------------
@@ -121,8 +71,8 @@ package body Configuration is
                    UnStr.To_String(Config.Device_Name);
          when USB_HID =>
             return "USB HID  " &
-                   "VID:  0x" & To_Hex_String(Config.Vendor_ID) &
-                   "  PID:  0x" & To_Hex_String(Config.Product_ID);
+                   "VID:  0x" & To_Hex(Config.Vendor_ID) &
+                   "  PID:  0x" & To_Hex(Config.Product_ID);
          when None =>
             return "Not Configured";
       end case;
@@ -1669,11 +1619,11 @@ package body Configuration is
       case Address.Size is
 
          when Byte_Sized =>
-            return "0x" & To_Hex_String(Unsigned_8(Address.Address));
+            return "0x" & To_Hex(Unsigned_8(Address.Address));
          when Word_Sized =>
-            return "0x" & To_Hex_String(Unsigned_16(Address.Address));
+            return "0x" & To_Hex(Unsigned_16(Address.Address));
          when Double_Word_Sized =>
-            return "0x" & To_Hex_String(Address.Address);
+            return "0x" & To_Hex(Address.Address);
          when None =>
             return "";
       end case;
