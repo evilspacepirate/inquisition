@@ -1,6 +1,6 @@
 -----------------------------------------------------------------
 --                                                             --
--- UTIL Specification                                          --
+-- PALETTE Specification                                       --
 --                                                             --
 -- Copyright (c) 2016, John Leimon                             --
 --                                                             --
@@ -20,31 +20,11 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
-with Ada.Containers.Indefinite_Vectors; use Ada.Containers;
-with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
-with Ada.Text_IO;                       use Ada.Text_IO;
-with Interfaces;                        use Interfaces;
-with Primatives;                        use Primatives;
 
-package Util is
-   
-   package Unsigned_8_IO is new Ada.Text_IO.Modular_IO(Unsigned_8);
-
-   function Split_String(Text : String; Seperators : String) return String_Vectors.Vector;
-
-   function To_Hex(Input : Unsigned_8) return String;
-   function To_Hex(Input : Unsigned_16) return String;
-   function To_Hex(Input : Unsigned_32) return String;
-
-   function To_Hex(Input : Unsigned_8_Vectors.Vector) return String;
-
-   procedure Put_Hex(Input : Unsigned_8);
-   -- Send value to STDOUT in hexidecimal --
-
-   procedure Put_Hex(Input : Unsigned_16);
-   -- Send value to STDOUT in hexidecimal --
-
-   procedure Dump(Input : Unsigned_8_Array);
-   -- Send a byte array to STDOUT as hex --
-
-end Util;
+package Palette is
+   Blue           : constant String := "#2797CD";
+   Green          : constant String := "#12B600";
+   Orange         : constant String := "#DF8400";
+   Purple         : constant String := "#9625A4";
+   Red            : constant String := "#FF0000";
+end Palette;

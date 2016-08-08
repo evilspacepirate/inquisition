@@ -20,6 +20,8 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
+with ada.text_io; use ada.text_io;
+with util;        use util;
 package body Primatives is
 
    -------------------
@@ -130,38 +132,37 @@ package body Primatives is
 
    end Requests_Buffer;
 
-   protected body Messages_Buffer is
+   protected body Message_Records_Buffer is
 
-      -------------------------
-      -- MESSAGES_BUFFER.ADD --
-      -------------------------
+      --------------------------------
+      -- MESSAGE_RECORDS_BUFFER.ADD --
+      --------------------------------
 
-      procedure Add (Message : Unsigned_8_Vectors.Vector) is
+      procedure Add (Message : Message_Record) is
       begin
          Elements.Append(Message);
       end Add;
 
-      ----------------------------
-      -- MESSAGES_BUFFER.REMOVE --
-      ----------------------------
+      -----------------------------------
+      -- MESSAGE_RECORDS_BUFFER.REMOVE --
+      -----------------------------------
 
-      procedure Remove (Values : out Message_Vectors.Vector) is
-          Value : Message_Vectors.Vector;
+      procedure Remove (Values : out Message_Record_Vectors.Vector) is
       begin
-          Value := Elements;
+          Values := Elements;
           Elements.Clear;
       end Remove;
 
-      ---------------------------
-      -- MESSAGES_BUFFER.CLEAR --
-      ---------------------------
+      ----------------------------------
+      -- MESSAGE_RECORDS_BUFFER.CLEAR --
+      ----------------------------------
 
       procedure Clear is
       begin
          Elements.Clear;
       end Clear;
 
-   end Messages_Buffer;
+   end Message_Records_Buffer;
 
    --------------------------------
    -- UNSIGNED_8_ARRAY_TO_VECTOR --

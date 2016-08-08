@@ -23,9 +23,12 @@
 with Interfaces;           use Interfaces;
 with Interfaces.C;         use Interfaces.C;
 with Interfaces.C.Strings;
+with Primatives;           use Primatives;
 with System;
 
 package USBHID is
+
+   Write_Error : exception;
 
    -- Ada binding to the C USB HIDAPI by Alan Ott --
 
@@ -76,6 +79,10 @@ package USBHID is
                    Length : Size_t) return Int;
    -- Return  N: 'N' bytes written --
    -- Return -1: Error             --
+
+   function Write_Data_Prepend_Length (Device : System.Address;
+                                       Data   : Unsigned_8_Array) return Int;
+   -- Prepends Data length (as an Unsigned_8) to transmission --
 
    function Read_Timeout (Dev          : System.Address;
                           Data         : System.Address;

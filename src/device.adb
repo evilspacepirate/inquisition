@@ -28,10 +28,12 @@ with System;        use System;
 
 package body Device is
 
-   Active_Config    : Datalink_Configuration;
-   USBHID_Device    : System.Address;
+   Read_Timeout_In_ms : constant := 100;
 
-   Connection_State : Connection_State_Type := Not_Connected;
+   Active_Config      : Datalink_Configuration;
+   USBHID_Device      : System.Address;
+
+   Connection_State   : Connection_State_Type := Not_Connected;
 
    ---------------
    -- SEND_DATA --
@@ -47,8 +49,11 @@ package body Device is
             -- TODO Not supported yet TODO --
             raise Invalid_DataLink_Config;
          when USB_HID =>
-            null;
-            -- TODO --
+            declare
+               Result : Int;
+            begin
+               Result := USBHID.Write_Data_Prepend_Length(USBHID_Device, Data);
+            end;
          when None =>
             raise Invalid_DataLink_Config;
       end case;
@@ -63,15 +68,24 @@ package body Device is
       No_Data     : Unsigned_8_Array(1 .. 0);
       Result      : Int;
    begin
-      Result := USBHID.Read_Timeout(USBHID_Device, Read_Buffer'Address, Maximum_Transmission_Unit, 0);
+      case Active_Config.Datalink is
+         when USB_HID =>
+            Result := USBHID.Read_Timeout(USBHID_Device,
+                                          Read_Buffer'Address,
+                                          Maximum_Transmission_Unit,
+                                          Read_Timeout_In_ms);
 
-      if Result = 0 then
-         return No_Data;
-      elsif Result = -1 then
-         raise Communications_Error;
-      else
-         return Read_Buffer(1 .. Natural(Result));
-      end if;
+            if Result = 0 then
+               return No_Data;
+            elsif Result = -1 then
+               raise Communications_Error;
+            else
+               return Read_Buffer(1 .. Natural(Result));
+            end if;
+         when others =>
+            -- TODO --
+            raise Invalid_DataLink_Config;
+      end case;
    end Get_Data;
 
    -------------
@@ -98,6 +112,13 @@ package body Device is
             if USBHID_Device = System.Null_Address then
                raise Error_Opening_Device;
             end if;
+
+            declare
+               Result : Int;
+            begin
+               Result :=  USBHID.Set_NonBlocking(USBHID_Device, 1);
+            end;
+
          when None =>
             raise Invalid_DataLink_Config;
       end case;

@@ -1,6 +1,6 @@
 -----------------------------------------------------------------
 --                                                             --
--- UTIL Specification                                          --
+-- USBHID                                                      --
 --                                                             --
 -- Copyright (c) 2016, John Leimon                             --
 --                                                             --
@@ -20,31 +20,33 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
-with Ada.Containers.Indefinite_Vectors; use Ada.Containers;
-with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
-with Ada.Text_IO;                       use Ada.Text_IO;
-with Interfaces;                        use Interfaces;
-with Primatives;                        use Primatives;
+with Interfaces;           use Interfaces;
+with Interfaces.C;         use Interfaces.C;
+with Interfaces.C.Strings;
+with Primatives;           use Primatives;
+with System;
+with Util;                 use Util;
 
-package Util is
-   
-   package Unsigned_8_IO is new Ada.Text_IO.Modular_IO(Unsigned_8);
+package body USBHID is
 
-   function Split_String(Text : String; Seperators : String) return String_Vectors.Vector;
+   -------------------------------
+   -- WRITE_DATA_PREPEND_LENGTH --
+   -------------------------------
 
-   function To_Hex(Input : Unsigned_8) return String;
-   function To_Hex(Input : Unsigned_16) return String;
-   function To_Hex(Input : Unsigned_32) return String;
+   function Write_Data_Prepend_Length (Device : System.Address;
+                                       Data   : Unsigned_8_Array) return Int is
+      Length : constant Natural := Data'Length;
+   begin
+      declare
+         Data_With_Length : Unsigned_8_Array(1 .. Length + 1);
+      begin
+         Data_With_Length(1)                          := Unsigned_8(Length);
+         Data_With_Length(2 .. Data_With_Length'Last) := Data;
+         return USBHID.Write(Device, Data_With_Length'Address, Data_With_Length'Length);
+      end;
+   exception
+      when others =>
+         raise Write_Error;
+   end Write_Data_Prepend_Length;
 
-   function To_Hex(Input : Unsigned_8_Vectors.Vector) return String;
-
-   procedure Put_Hex(Input : Unsigned_8);
-   -- Send value to STDOUT in hexidecimal --
-
-   procedure Put_Hex(Input : Unsigned_16);
-   -- Send value to STDOUT in hexidecimal --
-
-   procedure Dump(Input : Unsigned_8_Array);
-   -- Send a byte array to STDOUT as hex --
-
-end Util;
+end USBHID;

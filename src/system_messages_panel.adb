@@ -31,6 +31,7 @@ with Gtk.Text_Buffer;       use Gtk.Text_Buffer;
 with Gtk.Text_Iter;         use Gtk.Text_Iter;
 with Gtk.Text_Tag;          use Gtk.Text_Tag;
 with Gtk.Text_View;         use Gtk.Text_View;
+with Palette;
 
 package body System_Messages_Panel is
 
@@ -43,8 +44,9 @@ package body System_Messages_Panel is
    Text_View      : Gtk_Text_View;
    Buffer         : Gtk_Text_Buffer;
 
-   Blue           : constant String := "#2797CD";
-   Red            : constant String := "#FF0000";
+   ------------
+   -- CREATE --
+   ------------
 
    procedure Create is
    begin
@@ -57,14 +59,18 @@ package body System_Messages_Panel is
       Set_Editable(Text_View, False);
 
       Error_Text_Tag := Create_Tag(Buffer, "Error");
-      Glib.Properties.Set_Property(Error_Text_Tag, Foreground_Property, Red);
+      Glib.Properties.Set_Property(Error_Text_Tag, Foreground_Property, Palette.Red);
 
       Time_Text_Tag := Create_Tag(Buffer, "Time");
-      Glib.Properties.Set_Property(Time_Text_Tag, Foreground_Property, Blue);
+      Glib.Properties.Set_Property(Time_Text_Tag, Foreground_Property, Palette.Blue);
 
       Add(Window, Text_View);
       Pack_Start(Box, Window);
    end Create;
+
+   --------------------
+   -- APPEND_MESSAGE --
+   --------------------
 
    procedure Append_Message (Text : String) is
       Iter : Gtk_Text_Iter;
@@ -80,6 +86,10 @@ package body System_Messages_Panel is
       Insert_With_Tags(Buffer, Iter, Time_IO.Image(Clock, "%H%M:%S %Y.%m.%d :  "), Time_Text_Tag);
       Insert(Buffer, Iter, Text);
    end Append_Message;
+
+   ------------------
+   -- APPEND_ERROR --
+   ------------------
 
    procedure Append_Error (Text : String) is
       Iter : Gtk_Text_Iter;

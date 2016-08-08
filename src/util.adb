@@ -123,6 +123,37 @@ package body Util is
             To_Hex(Lowest_Byte);
    end To_Hex;
 
+   ------------
+   -- TO_HEX --
+   ------------
+
+   function To_Hex(Input : Unsigned_8_Vectors.Vector) return String is
+      use Unsigned_8_Vectors;
+      Length : constant Natural := Natural(Unsigned_8_Vectors.Length(Input));
+   begin
+      case Length is
+         when 0 =>
+            return "";
+         when 1 =>
+            declare
+               Output : String(1 .. 2);
+            begin
+               Output := To_Hex(Element(Input, 0));
+               return Output;
+            end;
+         when others =>
+            declare
+               Output : String (1 .. 3 * Length);
+            begin
+               for Index in Natural range 0 .. Length - 1 loop
+                  Output(1 + 3 * Index .. 2 + 3 * Index) := To_Hex(Element(Input, Index));
+                  Output(3 + 3 * Index) := ' ';
+               end loop;
+               return Output;
+            end;
+      end case;
+   end To_Hex;
+   
    -------------
    -- PUT_HEX --
    -------------

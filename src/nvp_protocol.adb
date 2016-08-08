@@ -336,7 +336,7 @@ package body NVP_Protocol is
             Interpreter.Packet_Length                               := Interpreter.Packet_Length +
                                                                        Natural(Shift_Left(Unsigned_16(Input), 8)) -
                                                                        Natural(Header_Size_With_Routing);
-            Interpreter.State                                       := Message_ID;
+            Interpreter.State                                       := Source;
             Interpreter.Message_Data_Buffer(Interpreter.Byte_Index) := Input;
             Interpreter.Byte_Index                                  := Interpreter.Byte_Index + 1;
             return No_Message;
@@ -408,9 +408,10 @@ package body NVP_Protocol is
    function Get_Message_Data_With_Routing (Input : Unsigned_8_Array) return Unsigned_8_Array is
       Length : Natural := Natural(Unsigned_16(Input(Length_Low_Byte_Index)) +
                                   Shift_Left(Unsigned_16(Input(Length_High_Byte_Index)), 8));
-      Data_Start : constant := Data_Start_Index_With_Routing;
+      Data_Start : constant Natural := Data_Start_Index_With_Routing;
+      Data_End   : constant Natural := Data_Start + Length - Source_Field_Length - Destination_Field_Length - Message_ID_Field_Length;
    begin
-      return Input(Data_Start .. Data_Start + Length);
+      return Input(Data_Start .. Data_End);
    end Get_Message_Data_With_Routing;
 
    ----------------------

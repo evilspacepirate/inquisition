@@ -170,6 +170,8 @@ begin
    Nexus_Idle_Handler_ID := Gtk.Main.Idle_Add(Nexus.Service'Access);
    Gtk.Main.Main;
 
+   Nexus.Shutdown;
+
    -- Success! --
    return 0;
 end Iq;

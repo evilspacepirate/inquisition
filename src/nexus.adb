@@ -20,6 +20,7 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
+with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Containers.Indefinite_Vectors; use Ada.Containers;
 with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
 with Configuration;                     use Configuration;
@@ -49,8 +50,8 @@ package body Nexus is
 
    Values_Received            : Values_Buffer;
 
-   Received_Message_Buffer    : Messages_Buffer;
-   Transmitted_Message_Buffer : Messages_Buffer;
+   Received_Message_Buffer    : Message_Records_Buffer;
+   Transmitted_Message_Buffer : Message_Records_Buffer;
 
    task type Data_Requestor_Task is
       entry Set_Request_Period(Period : in Duration);
@@ -68,6 +69,7 @@ package body Nexus is
    end Data_Interpreter_Task;
 
    Data_Requestor_Tasks : Data_Requestor_Task_Vectors.Vector;
+   Data_Interpreter     : Data_Interpreter_Task;
 
    -------------------------
    -- DATA_REQUESTOR TASK --
@@ -90,6 +92,8 @@ package body Nexus is
                   Request_Value_Packet : Unsigned_8_Array := Create_Request_Value_Packet(Requests.Get_Requests);
                begin
                   Device.Send_Data(Request_Value_Packet);
+                  Transmitted_Message_Buffer.Add(Message_Record'(Message => Unsigned_8_Array_To_Vector(Request_Value_Packet),
+                                                                 Time_Stamp => Clock));
                end;
             when NVP_With_Routing =>
                declare
@@ -98,6 +102,8 @@ package body Nexus is
                                                                                          Address_To_Unsigned_8(Protocol.Destination));
                begin
                   Device.Send_Data(Request_Value_Packet);
+                  Transmitted_Message_Buffer.Add(Message_Record'(Message => Unsigned_8_Array_To_Vector(Request_Value_Packet),
+                                                                 Time_Stamp => Clock));
                end;
             when IQ =>
                -- TODO Not supported yet --
@@ -107,15 +113,10 @@ package body Nexus is
                abort Data_Requestor_Task;
          end case;
       end Request_Data;
-
    begin
       loop
          if Requesting_Data then
-            -- XXX XXX DEBUG ONLY XXX XXX --
-            -- XXX XXX DEBUG ONLY XXX XXX --
             Request_Data;
-            -- XXX XXX DEBUG ONLY XXX XXX --
-            -- XXX XXX DEBUG ONLY XXX XXX --
          end if;
          select
             accept Set_Request_Period(Period : in Duration) do
@@ -158,7 +159,8 @@ package body Nexus is
                                 Data         : Unsigned_8_Array;
                                 Full_Message : Unsigned_8_Array) is
       begin
-         Received_Message_Buffer.Add(Unsigned_8_Array_To_Vector(Full_Message));
+         Received_Message_Buffer.Add(Message_Record'(Message    => Unsigned_8_Array_To_Vector(Full_Message),
+                                                     Time_Stamp => Clock));
          case ID is
             when NVP_Data_ID =>
                -- TODO Get the name and value --
@@ -179,61 +181,60 @@ package body Nexus is
             accept Stop do
                State := Stopped;
             end;
+         or
+            delay 0.0;
+            if State = Started then
+               declare
+                  Incoming_Data : Unsigned_8_Array := Device.Get_Data;
+               begin
+                  if Incoming_Data'Length /= 0 then
+                     case Protocol.Name is
+                        when NVP_With_Routing =>
+                           for Index in Natural range Incoming_Data'First .. Incoming_Data'Last loop
+                              declare
+                                 Message : Unsigned_8_Array := Interpret_Data_With_Routing(Incoming_Data(Index));
+                              begin
+                                 if Message'Length /= 0 then
+                                    -- Valid message found --
+                                    declare
+                                       ID                 : Message_ID_Type  := Get_Message_ID_With_Routing(Message);
+                                       Data               : Unsigned_8_Array := Get_Message_Data_With_Routing(Message);
+                                    begin
+                                       -- TODO Check source address and make sure        --
+                                       --      it matches the address of the Inquisition --
+                                       Handle_Message(ID, Data, Message);
+                                    end;
+                                 end if;
+                              end;
+                           end loop;
+                        when NVP =>
+                           for Index in Natural range Incoming_Data'First .. Incoming_Data'Last loop
+                              declare
+                                 Message : Unsigned_8_Array := Interpret_Data(Incoming_Data(Index));
+                              begin
+                                 if Message'Length /= 0 then
+                                    -- Valid message found --
+                                    declare
+                                       ID   : Message_ID_Type  := Get_Message_ID(Message);
+                                       Data : Unsigned_8_Array := Get_Message_Data(Message);
+                                    begin
+                                       Handle_Message(ID, Data, Message);
+                                    end;
+                                 end if;
+                              end;
+                           end loop;
+                        when IQ =>
+                           -- TODO Not supported yet --
+                           abort Data_Interpreter_Task;
+                        when None =>
+                           -- Invalid protocol --
+                           abort Data_Interpreter_Task;
+                     end case;
+                  end if;
+               end;
+            end if;
          end select;
 
-         if State = Started then
-            declare
-               Incoming_Data : Unsigned_8_Array := Device.Get_Data;
-            begin
-               if Incoming_Data'Length /= 0 then
-                  case Protocol.Name is
-                     when NVP_With_Routing =>
-                        for Index in Natural range Incoming_Data'First .. Incoming_Data'Last loop
-                           declare
-                              Message : Unsigned_8_Array := Interpret_Data_With_Routing(Incoming_Data(Index));
-                           begin
-                              if Message'Length /= 0 then
-                                 -- Valid message found --
-                                 declare
-                                    ID   : Message_ID_Type  := Get_Message_ID_With_Routing(Message);
-                                    Data : Unsigned_8_Array := Get_Message_Data_With_Routing(Message);
-                                 begin
-                                    Handle_Message(ID, Data, Message);
-                                 end;
-                              end if;
-                           end;
-                        end loop;
-                     when NVP =>
-                        for Index in Natural range Incoming_Data'First .. Incoming_Data'Last loop
-                           declare
-                              Message : Unsigned_8_Array := Interpret_Data(Incoming_Data(Index));
-                           begin
-                              if Message'Length /= 0 then
-                                 -- Valid message found --
-                                 declare
-                                    ID   : Message_ID_Type  := Get_Message_ID(Message);
-                                    Data : Unsigned_8_Array := Get_Message_Data(Message);
-                                 begin
-                                    Handle_Message(ID, Data, Message);
-                                 end;
-                                 Null;
-                              end if;
-                           end;
-                        end loop;
-                     when IQ =>
-                        -- TODO Not supported yet --
-                        abort Data_Interpreter_Task;
-                     when None =>
-                        -- Invalid protocol --
-                        abort Data_Interpreter_Task;
-                  end case;
-               end if;
-            end;
-         else
-            -- Not started. Take a nap. --
-            -- XXX TAKE OUT XXX --
-            delay 0.1;
-         end if;
       end loop;
    exception
       when others =>
@@ -241,7 +242,7 @@ package body Nexus is
             -- Send signal to main thread to report an alert --
             IO_Error := True;
          end if;
-         abort Data_Interpreter_Task;
+         State := Stopped;
    end Data_Interpreter_Task;
 
    ----------------
@@ -300,6 +301,14 @@ package body Nexus is
 
    procedure Shutdown is
    begin
+      -- Terminate all tasks --
+      loop
+         exit when Data_Requestor_Tasks.Length = 0;
+         abort Data_Requestor_Tasks.Element(Data_Requestor_Tasks.First_Index).all;
+         Data_Requestor_Tasks.Delete_First;
+      end loop;
+      abort Data_Interpreter;
+      
       Device.Shutdown;
    end Shutdown;
 
@@ -330,33 +339,26 @@ package body Nexus is
       if Device.Connected = True then
          Configuration_Panel.Set_Connect_Button_Enabled(False);
          Configuration_Panel.Set_Disconnect_Button_Enabled(True);
+
+         Data_Interpreter.Start;
+
+         -- Create Data Requestor Tasks --
+         for Index in Natural range 0 .. Natural(Adaptable_Parameters.Length) - 1 loop
+            if Adaptable_Parameters.Element(Index).Is_Readable then
+               declare
+                  Parameter_IDs : Unsigned_16_Vectors.Vector;
+                  Sample_Period : Duration                   := String_To_Duration(UnStr.To_String(Adaptable_Parameters.Element(Index).Sample_Period));
+                  New_Requestor : Data_Requestor_Task_Access := new Data_Requestor_Task;
+               begin
+                  Parameter_IDs.Append(Adaptable_Parameters.Element(Index).Unique_Identifier);
+                  New_Requestor.Set_Request_Period(Sample_Period);
+                  New_Requestor.Set_Requests(Parameter_IDs);
+                  New_Requestor.Set_Requesting_Data(Adaptable_Parameters.Element(Index).Is_Sampling);
+                  Data_Requestor_Tasks.Append(New_Requestor);
+               end;
+            end if;
+         end loop;
       end if;
-
-
-
-      -- XXX XXX DUMP AP CONFIGURATION XXX XXX --
-
-      for Index in Natural range 0 .. Natural(Adaptable_Parameters.Length) - 1 loop
-         Put(Natural'Image(Index) & ": ");
-         Put_Hex(Adaptable_Parameters.Element(Index).Unique_Identifier);
-         put("  " & UnStr.To_String(Adaptable_Parameters.Element(Index).Friendly_Name));
-         put("  " & Duration'Image(String_To_Duration(UnStr.To_String(Adaptable_parameters.Element(Index).Sample_Period))));
-         New_Line;
-
-         declare
-            Parameter_IDs : Unsigned_16_Vectors.Vector;
-            Sample_Period : Duration                   := String_To_Duration(UnStr.To_String(Adaptable_parameters.Element(Index).Sample_Period))
-            New_Requestor : access Data_Requestor_Task := new Data_Requestor_Task;
-         begin
-            Parameters.Append(Adaptable_Parameters(Element(Index).Unique_Identifier))
-            New_Requestor'all.Set_Request_Period(Sample_Period);
-            New_Requestor'all.Set_Requests(Parameter_IDs);
-            New_Requestor'all.Set_Requesting_Data(True);
-            Data_Requestor_Tasks.Append(New_Requestor);
-         end;
-
-      end loop;
-
    end Connect_Event;
 
    ----------------------
@@ -365,10 +367,19 @@ package body Nexus is
 
    procedure Disconnect_Event is
    begin
+      Data_Interpreter.Stop;
+
       if Device.Connected = True then
          Device.Disconnect;
          System_Messages_Panel.Append_Message("Disconnected: " & Datalink_Configuration_To_String(Datalink) & CRLF);
       end if;
+
+      -- Terminate all data requestor tasks --
+      loop
+         exit when Data_Requestor_Tasks.Length = 0;
+         abort Data_Requestor_Tasks.Element(Data_Requestor_Tasks.First_Index).all;
+         Data_Requestor_Tasks.Delete_First;
+      end loop;
 
       if Device.Connected = False then
          Configuration_Panel.Set_Connect_Button_Enabled(True);
@@ -445,10 +456,23 @@ package body Nexus is
 
    function Service return Boolean is
    begin
+      -- This subprogram runs in the main GTK thread --
+
       if IO_Error then
          System_Messages_Panel.Append_Error("IO Error" & CRLF);
          Disconnect_Event;
       end if;
+
+      declare
+         Received_Messages    : Message_Record_Vectors.Vector;
+         Transmitted_Messages : Message_Record_Vectors.Vector;
+      begin
+         Received_Message_Buffer.Remove(Received_Messages);
+         Transmitted_Message_Buffer.Remove(Transmitted_Messages);
+         Raw_Data_Panel.Add_Received_Messages(Received_Messages);
+         Raw_Data_Panel.Add_Transmitted_Messages(Transmitted_Messages);
+      end;
+
       return True;
    end Service;
 
