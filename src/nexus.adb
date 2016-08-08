@@ -173,68 +173,72 @@ package body Nexus is
 
    begin
       loop
-         select
-            accept Start do
-               State := Started;
-            end;
-         or
-            accept Stop do
-               State := Stopped;
-            end;
-         or
-            delay 0.0;
-            if State = Started then
-               declare
-                  Incoming_Data : Unsigned_8_Array := Device.Get_Data;
-               begin
-                  if Incoming_Data'Length /= 0 then
-                     case Protocol.Name is
-                        when NVP_With_Routing =>
-                           for Index in Natural range Incoming_Data'First .. Incoming_Data'Last loop
-                              declare
-                                 Message : Unsigned_8_Array := Interpret_Data_With_Routing(Incoming_Data(Index));
-                              begin
-                                 if Message'Length /= 0 then
-                                    -- Valid message found --
-                                    declare
-                                       ID                 : Message_ID_Type  := Get_Message_ID_With_Routing(Message);
-                                       Data               : Unsigned_8_Array := Get_Message_Data_With_Routing(Message);
-                                    begin
-                                       -- TODO Check source address and make sure        --
-                                       --      it matches the address of the Inquisition --
-                                       Handle_Message(ID, Data, Message);
-                                    end;
-                                 end if;
-                              end;
-                           end loop;
-                        when NVP =>
-                           for Index in Natural range Incoming_Data'First .. Incoming_Data'Last loop
-                              declare
-                                 Message : Unsigned_8_Array := Interpret_Data(Incoming_Data(Index));
-                              begin
-                                 if Message'Length /= 0 then
-                                    -- Valid message found --
-                                    declare
-                                       ID   : Message_ID_Type  := Get_Message_ID(Message);
-                                       Data : Unsigned_8_Array := Get_Message_Data(Message);
-                                    begin
-                                       Handle_Message(ID, Data, Message);
-                                    end;
-                                 end if;
-                              end;
-                           end loop;
-                        when IQ =>
-                           -- TODO Not supported yet --
-                           abort Data_Interpreter_Task;
-                        when None =>
-                           -- Invalid protocol --
-                           abort Data_Interpreter_Task;
-                     end case;
-                  end if;
+         if State = Started then
+            select
+               accept Stop do
+                  State := Stopped;
                end;
-            end if;
-         end select;
-
+            or
+               delay 0.0;
+               if State = Started then
+                  declare
+                     Incoming_Data : Unsigned_8_Array := Device.Get_Data;
+                  begin
+                     if Incoming_Data'Length /= 0 then
+                        case Protocol.Name is
+                           when NVP_With_Routing =>
+                              for Index in Natural range Incoming_Data'First .. Incoming_Data'Last loop
+                                 declare
+                                    Message : Unsigned_8_Array := Interpret_Data_With_Routing(Incoming_Data(Index));
+                                 begin
+                                    if Message'Length /= 0 then
+                                       -- Valid message found --
+                                       declare
+                                          ID                 : Message_ID_Type  := Get_Message_ID_With_Routing(Message);
+                                          Data               : Unsigned_8_Array := Get_Message_Data_With_Routing(Message);
+                                       begin
+                                          -- TODO Check source address and make sure        --
+                                          --      it matches the address of the Inquisition --
+                                          Handle_Message(ID, Data, Message);
+                                       end;
+                                    end if;
+                                 end;
+                              end loop;
+                           when NVP =>
+                              for Index in Natural range Incoming_Data'First .. Incoming_Data'Last loop
+                                 declare
+                                    Message : Unsigned_8_Array := Interpret_Data(Incoming_Data(Index));
+                                 begin
+                                    if Message'Length /= 0 then
+                                       -- Valid message found --
+                                       declare
+                                          ID   : Message_ID_Type  := Get_Message_ID(Message);
+                                          Data : Unsigned_8_Array := Get_Message_Data(Message);
+                                       begin
+                                          Handle_Message(ID, Data, Message);
+                                       end;
+                                    end if;
+                                 end;
+                              end loop;
+                           when IQ =>
+                              -- TODO Not supported yet --
+                              abort Data_Interpreter_Task;
+                           when None =>
+                              -- Invalid protocol --
+                              abort Data_Interpreter_Task;
+                        end case;
+                     end if;
+                  end;
+               end if;
+            end select;
+         else
+            -- Not Started --
+            select
+               accept Start do
+                  State := Started;
+               end;
+            end select;
+         end if;
       end loop;
    exception
       when others =>

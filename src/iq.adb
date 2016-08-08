@@ -64,7 +64,8 @@ function Iq return Integer is
    System_Messages_Area_Size : GInt;
    System_Messages_Area_Set  : Boolean := False;
 
-   Nexus_Idle_Handler_ID     : GTK.Main.Idle_Handler_ID;
+   Nexus_Callback_Period     : constant := 1; -- Milliseconds --
+   Nexus_Timeout_Handler_ID  : GTK.Main.Timeout_Handler_ID;
 
    -- Search for an inquisition configuration file in the current working --
    -- directory and load configuration data from it. If there are more    --
@@ -167,7 +168,7 @@ begin
 
    Main_Window.Show_All;
 
-   Nexus_Idle_Handler_ID := Gtk.Main.Idle_Add(Nexus.Service'Access);
+   Nexus_Timeout_Handler_ID := Gtk.Main.Timeout_Add(Nexus_Callback_Period, Nexus.Service'Access);
    Gtk.Main.Main;
 
    Nexus.Shutdown;
