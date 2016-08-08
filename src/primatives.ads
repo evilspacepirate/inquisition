@@ -22,6 +22,7 @@
 -----------------------------------------------------------------
 with Ada.Calendar;                      use Ada.Calendar;
 with Ada.Containers.Indefinite_Vectors; use Ada.Containers;
+with Ada.Containers.Hashed_Maps;
 with Ada.Strings.Unbounded;             use Ada.Strings.Unbounded;
 with Interfaces;                        use Interfaces;
 
@@ -34,12 +35,17 @@ package Primatives is
       Value : Unsigned_32;
    end record;
 
+   function Unsigned_16_Hashed(Value : Unsigned_16) return Hash_Type is (Hash_Type(Value));
+
    package UnStr renames Ada.Strings.Unbounded;
    package String_Vectors is new Indefinite_Vectors (Natural, UnStr.Unbounded_String);
    package Unsigned_8_Vectors is new Indefinite_Vectors (Natural, Unsigned_8);
    use Unsigned_8_Vectors;
    package Unsigned_16_Vectors is new Indefinite_Vectors (Natural, Unsigned_16);
    package Name_Value_Pair_Vectors is new Indefinite_Vectors (Natural, Name_Value_Pair);
+   package Natural_Vectors is new Indefinite_Vectors(Natural, Natural);
+   use Natural_Vectors;
+   package Name_Index_Maps is new Hashed_Maps(Unsigned_16, Natural_Vectors.Vector, Unsigned_16_Hashed, "=");
 
    type Message_Record is record
       Message    : Unsigned_8_Vectors.Vector;

@@ -83,6 +83,8 @@ package body Control_Panel is
 
    Panel_Enabled                      : Boolean := False;
 
+   UID_To_AP_Index_Map                : Name_Index_Maps.Map;
+
    ------------
    -- CREATE --
    ------------
@@ -237,6 +239,21 @@ package body Control_Panel is
    begin
       Adaptable_Parameters := Parameters;
       for Index in Natural range 0 .. Natural(Length(Parameters)) - 1 loop
+
+         -- Add reference to AP in the UID to AP Index map --
+         declare
+            Index_Vector : Natural_Vectors.Vector;
+            UID          : constant Unsigned_16 := Parameters.Element(Index).Unique_Identifier;
+         begin
+            if UID_To_AP_Index_Map.Contains(UID) then
+               Index_Vector := UID_To_AP_Index_Map.Element(UID);
+               Index_Vector.Append(Index);
+               UID_To_AP_Index_Map.Replace(UID, Index_Vector);
+            else
+               Index_Vector.Append(Index);
+               UID_To_AP_Index_Map.Insert(UID, Index_Vector);
+            end if;
+         end;
 
          Append(Store.all'access, Iter);
          Set(Store.all'access, Iter, Name_ID,  UnStr.To_String(Parameters.Element(Index).Friendly_Name));
@@ -481,16 +498,38 @@ package body Control_Panel is
          Null;
    end Request_Period_Edited;
 
-   ---------------
-   -- SET_VALUE --
-   ---------------
+   ----------------------
+   -- UPDATE_UID_VALUE --
+   ----------------------
 
-   procedure Set_Value (Adaptable_Parameter_Index : Natural;
-                        Value                     : Unsigned_32) is
+   procedure Update_UID_Value (UID   : Unsigned_16;
+                               Value : Unsigned_32) is
+      Index_Vector : Natural_Vectors.Vector;
    begin
-      -- TODO --
-      Null;
-   end Set_Value;
+      if UID_To_AP_Index_Map.Contains(UID) then
+         Index_Vector := UID_To_AP_Index_Map.Element(UID);
+         for Index in Natural range 0 .. Natural(Index_Vector.Length) - 1 loop
+            declare
+               Iter : Gtk_Tree_Iter := Get_Iter_From_String(Store, Natural'Image(Index));
+            begin
+               if Iter /= Null_Iter then
+                  case Adaptable_Parameters.Element(Index).Display_As is
+                     when IEEE754 =>
+                        -- TODO --
+                        null;
+                     when Signed =>
+                        -- TODO --
+                        Null;
+                     when Unsigned =>
+                        Set(Store, Iter, Value_ID, Unsigned_32'Image(Value));
+                     when Hex =>
+                        Set(Store, Iter, Value_ID, To_Hex(Value));
+                  end case;
+               end if;
+            end;
+         end loop;
+      end if;
+   end Update_UID_Value;
 
    -------------
    -- DISABLE --

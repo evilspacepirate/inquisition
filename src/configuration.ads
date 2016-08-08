@@ -59,7 +59,7 @@ package Configuration is
    NVP_Routing_Declaration_Syntax_Error       : exception;
    Protocol_Declaration_Address_Size_Mismatch : exception;
    
-   type Display_As_Type is (IEEE754, Singed, Unsigned, Hex);
+   type Display_As_Type is (IEEE754, Signed, Unsigned, Hex);
    type Protocol_Type is (NVP, NVP_With_Routing, IQ, None);
    type Address_Size_Type is (Byte_Sized, Word_Sized, Double_Word_Sized, None);
    type Parity_Type is (Even, Odd, None);
