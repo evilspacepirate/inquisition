@@ -35,6 +35,8 @@ package Primatives is
       Value : Unsigned_32;
    end record;
 
+   Name_Value_Pair_Size : constant := 6; -- Bytes --
+
    function Unsigned_16_Hashed(Value : Unsigned_16) return Hash_Type is (Hash_Type(Value));
 
    package UnStr renames Ada.Strings.Unbounded;
@@ -54,15 +56,20 @@ package Primatives is
 
    package Message_Record_Vectors is new Indefinite_Vectors(Natural, Message_Record);
 
-   protected type Values_Buffer is
-      procedure Add(Value : in Name_Value_Pair);
-      procedure Set(Values : in Name_Value_Pair_Vectors.Vector);
+   type Name_Value_Pair_Record is record
+      Values     : Name_Value_Pair_Vectors.Vector;
+      Time_Stamp : Time;
+   end record;
+
+   package Name_Value_Pair_Record_Vectors is new Indefinite_Vectors(Natural, Name_Value_Pair_Record);
+
+   protected type Name_Value_Pair_Record_Buffer is
+      procedure Add(Value : in Name_Value_Pair_Record);
+      procedure Remove (Values : out Name_Value_Pair_Record_Vectors.Vector);
       procedure Clear;
-      procedure Remove (Values : out Name_Value_Pair_Vectors.Vector);
-      function Get_Values return Name_Value_Pair_Vectors.Vector;
    private
-      Elements : Name_Value_Pair_Vectors.Vector;
-   end Values_Buffer;
+      Elements : Name_Value_Pair_Record_Vectors.Vector;
+   end Name_Value_Pair_Record_Buffer;
 
    protected type Requests_Buffer is
       procedure Add(Request : in Unsigned_16);

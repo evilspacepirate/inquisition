@@ -7,4 +7,3 @@ gnatmake -g -gnat12 src/iq.adb -aO/usr/lib/x86_64-linux-gnu/ada/adalib/gtkada -a
 mkdir bin
 mv iq bin
 
-rm *.o *.ali b~*

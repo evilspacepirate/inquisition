@@ -47,7 +47,7 @@ package body Nexus is
 
    IO_Error                   : Boolean := False;
 
-   Values_Received            : Values_Buffer;
+   Received_NVP_Records       : Name_Value_Pair_Record_Buffer;
 
    Received_Message_Buffer    : Message_Records_Buffer;
    Transmitted_Message_Buffer : Message_Records_Buffer;
@@ -157,13 +157,20 @@ package body Nexus is
       procedure Handle_Message (ID           : Message_ID_Type;
                                 Data         : Unsigned_8_Array;
                                 Full_Message : Unsigned_8_Array) is
+         Message_Receipt_Time : Time := Clock;
       begin
          Received_Message_Buffer.Add(Message_Record'(Message    => Unsigned_8_Array_To_Vector(Full_Message),
                                                      Time_Stamp => Clock));
          case ID is
             when NVP_Data_ID =>
-               -- TODO Get the name and value --
-               Null;
+               declare
+                  Name_Value_Pairs : Name_Value_Pair_Vectors.Vector;
+                  New_NVP_Record   : Name_Value_Pair_Record;
+               begin
+                  New_NVP_Record.Time_Stamp := Message_Receipt_Time;
+                  New_NVP_Record.Values     := Interpret_NVP_Data(Data);
+                  Received_NVP_Records.Add(New_NVP_Record);
+               end;
             when others =>
                -- Ignore the message --
                Null;
@@ -475,6 +482,23 @@ package body Nexus is
          Transmitted_Message_Buffer.Remove(Transmitted_Messages);
          Raw_Data_Panel.Add_Received_Messages(Received_Messages);
          Raw_Data_Panel.Add_Transmitted_Messages(Transmitted_Messages);
+      end;
+
+      -- Update control panel with new device data --
+      declare
+         NVP_Records : Name_Value_Pair_Record_Vectors.Vector;
+      begin
+         Received_NVP_Records.Remove(NVP_Records);
+
+         for Record_Index in Natural range 0 .. Natural(NVP_Records.Length) - 1 loop
+            declare
+               NVP : Name_Value_Pair_Vectors.Vector := NVP_Records.Element(Record_Index).Values;
+            begin
+               for NVP_Index in Natural range 0 .. Natural(NVP.Length) - 1 loop
+                  Control_Panel.Update_UID_Value(NVP.Element(NVP_Index).Name, NVP.Element(NVP_Index).Value);
+               end loop;
+            end;
+         end loop;
       end;
 
       return True;

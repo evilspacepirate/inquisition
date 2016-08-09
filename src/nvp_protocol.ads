@@ -95,6 +95,8 @@ package NVP_Protocol is
    -- Get the data field of a packet that does not contain routing fields in its header. This --
    -- function does not validate the correctness of a packet format.  --
 
+   function Interpret_NVP_Data(Data : Unsigned_8_Array) return Name_Value_Pair_Vectors.Vector;
+
    private
 
    type Interpreter_State is (Sync_Byte_1,

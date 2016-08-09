@@ -50,7 +50,4 @@ package Device is
 
    function Connected return Boolean;
 
-   Requests    : Requests_Buffer;
-   Set_Values  : Values_Buffer;
-
 end Device;

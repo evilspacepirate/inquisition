@@ -24,59 +24,41 @@ with ada.text_io; use ada.text_io;
 with util;        use util;
 package body Primatives is
 
-   -------------------
-   -- VALUES_BUFFER --
-   -------------------
+   -----------------------------------
+   -- NAME_VALUE_PAIR_RECORD_BUFFER --
+   -----------------------------------
 
-   protected body Values_Buffer is
+   protected body Name_Value_Pair_Record_Buffer is
 
-      -----------------------
-      -- VALUES_BUFFER.ADD --
-      -----------------------
+      ---------------------------------------
+      -- NAME_VALUE_PAIR_RECORD_BUFFER.ADD --
+      ---------------------------------------
 
-      procedure Add(Value : in Name_Value_Pair) is
+      procedure Add(Value : in Name_Value_Pair_Record) is
       begin
          Elements.Append(Value);
       end Add;
 
-      -----------------------
-      -- VALUES_BUFFER.SET --
-      -----------------------
-
-      procedure Set (Values : in Name_Value_Pair_Vectors.Vector) is
-      begin
-         Elements := Values;
-      end Set;
-
-      -------------------------
-      -- VALUES_BUFFER.CLEAR --
-      -------------------------
+      -----------------------------------------
+      -- NAME_VALUE_PAIR_RECORD_BUFFER.CLEAR --
+      -----------------------------------------
 
       procedure Clear is
       begin
          Elements.Clear;
       end Clear;
 
-      --------------------------
-      -- VALUES_BUFFER.REMOVE --
-      --------------------------
+      ------------------------------------------
+      -- NAME_VALUE_PAIR_RECORD_BUFFER.REMOVE --
+      ------------------------------------------
 
-      procedure Remove (Values : out Name_Value_Pair_Vectors.Vector) is
+      procedure Remove (Values : out Name_Value_Pair_Record_Vectors.Vector) is
       begin
          Values := Elements;
          Elements.Clear;
       end Remove;
 
-      ------------------------------
-      -- VALUES_BUFFER.GET_VALUES --
-      ------------------------------
-
-      function Get_Values return Name_Value_Pair_Vectors.Vector is
-      begin
-         return Elements;
-      end Get_Values;
-
-   end Values_Buffer;
+   end Name_Value_Pair_Record_Buffer;
 
    ---------------------
    -- REQUESTS_BUFFER --

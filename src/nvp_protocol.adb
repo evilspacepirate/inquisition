@@ -409,7 +409,7 @@ package body NVP_Protocol is
       Length : Natural := Natural(Unsigned_16(Input(Length_Low_Byte_Index)) +
                                   Shift_Left(Unsigned_16(Input(Length_High_Byte_Index)), 8));
       Data_Start : constant Natural := Data_Start_Index_With_Routing;
-      Data_End   : constant Natural := Data_Start + Length - Source_Field_Length - Destination_Field_Length - Message_ID_Field_Length;
+      Data_End   : constant Natural := Data_Start + Length - Source_Field_Length - Destination_Field_Length - Message_ID_Field_Length - 1;
    begin
       return Input(Data_Start .. Data_End);
    end Get_Message_Data_With_Routing;
@@ -420,10 +420,44 @@ package body NVP_Protocol is
 
    function Get_Message_Data (Input : Unsigned_8_Array) return Unsigned_8_Array is
       Length : Natural := Natural(Unsigned_16(Input(Length_Low_Byte_Index)) +
-                                  Shift_Left(Unsigned_16(Input(Length_High_Byte_Index)), 8));
+                          Shift_Left(Unsigned_16(Input(Length_High_Byte_Index)), 8));
       Data_Start : constant := Data_Start_Index_Without_Routing;
    begin
       return Input(Data_Start .. Data_Start + Length);
    end Get_Message_Data;
+
+   ------------------------
+   -- INTERPRET_NVP_DATA --
+   ------------------------
+
+   function Interpret_NVP_Data(Data : Unsigned_8_Array) return Name_Value_Pair_Vectors.Vector is
+      Values       : Name_Value_Pair_Vectors.Vector;
+      Values_Count : Natural;
+      NVP          : Name_Value_Pair;
+   begin
+
+      -- Validate data size --
+
+      if Data'Length < Name_Value_Pair_Size or
+         Data'Length mod Name_Value_Pair_Size /= 0
+      then
+         return Values;
+      end if;
+
+      Values_Count := Data'Length / Name_Value_Pair_Size;
+
+      -- Decode Name Value Pair data --
+
+      for Index in Natural range 0 .. Values_Count - 1 loop
+         NVP.Name  := Unsigned_16(Data(Data'First + 0 + 6 * Index)) + Shift_Left(Unsigned_16(Data(Data'First + 1 + 6 * Index)),  8);
+         NVP.Value := Unsigned_32(Data(Data'First + 2 + 6 * Index)) + Shift_Left(Unsigned_32(Data(Data'First + 3 + 6 * Index)),  8) +
+                                                                      Shift_Left(Unsigned_32(Data(Data'First + 4 + 6 * Index)), 16) +
+                                                                      Shift_Left(Unsigned_32(Data(Data'First + 5 + 6 * Index)), 24);
+         Values.Append(NVP);
+      end loop;
+
+      return Values;
+
+   end Interpret_NVP_Data;
 
 end NVP_Protocol;
