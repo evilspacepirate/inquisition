@@ -346,6 +346,8 @@ package body Nexus is
          end;
       end if;
 
+      Control_Panel.Enable;
+
       if Device.Connected = True then
          Configuration_Panel.Set_Connect_Button_Enabled(False);
          Configuration_Panel.Set_Disconnect_Button_Enabled(True);
@@ -384,6 +386,8 @@ package body Nexus is
          Device.Disconnect;
          System_Messages_Panel.Append_Message("Disconnected: " & Datalink_Configuration_To_String(Datalink) & CRLF);
       end if;
+
+      Control_Panel.Disable;
 
       -- Terminate all data requestor tasks --
       loop
