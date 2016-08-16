@@ -20,11 +20,12 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
-with Interfaces; use Interfaces;
+with Interfaces;    use Interfaces;
+with Control_Panel; use Control_Panel;
 
 package Nexus is
 
-   procedure Initialize;
+   procedure Initialize(Panel : Control_Panel_Widget);
    procedure Shutdown;
    function Service return Boolean;
    -- Must be called from the main thread for GTK to behave --

@@ -52,6 +52,8 @@ package body Nexus is
    Received_Message_Buffer    : Message_Records_Buffer;
    Transmitted_Message_Buffer : Message_Records_Buffer;
 
+   The_Control_Panel          : Control_Panel_Widget;
+
    task type Data_Requestor_Task is
       entry Set_Request_Period(Period : in Duration);
       entry Set_Requests(New_Requests : in Unsigned_16_Vectors.Vector);
@@ -259,7 +261,7 @@ package body Nexus is
    -- INITIALIZE --
    ----------------
 
-   procedure Initialize is
+   procedure Initialize (Panel : Control_Panel.Control_Panel_Widget) is
       Configuration_File_Errors : UnStr.Unbounded_String;
       -- Search for an inquisition configuration file in the current working --
       -- directory and load configuration data from it. If there are more    --
@@ -282,8 +284,9 @@ package body Nexus is
          System_Messages_Panel.Append_Message("No configuration file found in current directory.");
       end if;
 
-      -- Control_Panel.Set_Adaptable_Parameters(Adaptable_Parameters);
-      -- TODO --
+      The_Control_Panel := Panel;
+      The_Control_Panel.Set_Adaptable_Parameters(Adaptable_Parameters);
+
       Status_Bar_Panel.Set_Configuration_Text("Data Link :  " & Datalink_Configuration_To_String(Datalink));
       Status_Bar_Panel.Set_Protocol_Text(Protocol_Configuration_To_String(Protocol));
       Configuration_Panel.Set_Connect_Button_Enabled(True);

@@ -165,7 +165,7 @@ begin
    Return_Callback.Connect(Main_Window, "configure_event", On_Main_Window_Size_Change'access);
    Basic_Callback.Connect(Main_Window, "size_allocate", On_Main_Window_Pane_Size_Change'access);
 
-   Nexus.Initialize;
+   Nexus.Initialize(Control_Panel);
 
    Main_Window.Show_All;
 

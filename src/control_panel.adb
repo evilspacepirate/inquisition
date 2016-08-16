@@ -114,7 +114,7 @@ package body Control_Panel is
    -- GET_NAME_COLUMN_WIDTH --
    ---------------------------
 
-   function Get_Name_Column_Width (Panel   : access Control_Panel_Widget_Record'Class;
+   function Get_Name_Column_Width (Widget  : access Control_Panel_Widget_Record'Class;
                                    Context : Cairo_Context) return GDouble is
       Extents : aliased Cairo_Text_Extents;
       Font    : Cairo_Scaled_Font := Get_Scaled_Font(Context);
@@ -122,9 +122,9 @@ package body Control_Panel is
    begin
       Text_Extents(Font, Interfaces.C.Strings.New_String(Name_Column_Text), Extents'access);
       Width := Extents.Width;
-      for Index in Natural range 0 .. Natural(Panel.Adaptable_Parameters.Length) - 1 loop
+      for Index in Natural range 0 .. Natural(Widget.Adaptable_Parameters.Length) - 1 loop
          Text_Extents(Font,
-                      Interfaces.C.Strings.New_String(UnStr.To_String(Panel.Adaptable_Parameters.Element(Index).Friendly_Name)),
+                      Interfaces.C.Strings.New_String(UnStr.To_String(Widget.Adaptable_Parameters.Element(Index).Friendly_Name)),
                       Extents'access);
          if Extents.Width > Width then
             Width := Extents.Width;
@@ -137,7 +137,7 @@ package body Control_Panel is
    -- GET_VALUE_COLUMN_WIDTH --
    ----------------------------
 
-   function Get_Value_Column_Width (Panel   : access Control_Panel_Widget_Record'Class;
+   function Get_Value_Column_Width (Widget  : access Control_Panel_Widget_Record'Class;
                                     Context : Cairo_Context) return GDouble is
      Extents : aliased Cairo_Text_Extents;
      Font    : Cairo_Scaled_Font := Get_Scaled_Font(Context);
@@ -145,9 +145,9 @@ package body Control_Panel is
    begin
       Text_Extents(Font, Interfaces.C.Strings.New_String(Value_Column_Text), Extents'access);
       Width := Extents.Width;
-      for Index in Natural range 0 .. Natural(Panel.Adaptable_Parameters.Length) - 1 loop
+      for Index in Natural range 0 .. Natural(Widget.Adaptable_Parameters.Length) - 1 loop
          Text_Extents(Font,
-                      Interfaces.C.Strings.New_String(UnStr.To_String(Panel.Values.Element(Index))),
+                      Interfaces.C.Strings.New_String(UnStr.To_String(Widget.Values.Element(Index))),
                       Extents'access);
          if Extents.Width > Width then
             Width := Extents.Width;
@@ -160,7 +160,7 @@ package body Control_Panel is
    -- GET_UNITS_COLUMN_WIDTH --
    ----------------------------
 
-   function Get_Units_Column_Width (Panel   : access Control_Panel_Widget_Record'Class;
+   function Get_Units_Column_Width (Widget  : access Control_Panel_Widget_Record'Class;
                                     Context : Cairo_Context) return GDouble is
      Extents : aliased Cairo_Text_Extents;
      Font    : Cairo_Scaled_Font := Get_Scaled_Font(Context);
@@ -168,9 +168,9 @@ package body Control_Panel is
    begin
       Text_Extents(Font, Interfaces.C.Strings.New_String(Units_Column_Text), Extents'access);
       Width := Extents.Width;
-      for Index in Natural range 0 .. Natural(Panel.Adaptable_Parameters.Length) - 1 loop
+      for Index in Natural range 0 .. Natural(Widget.Adaptable_Parameters.Length) - 1 loop
          Text_Extents(Font,
-                      Interfaces.C.Strings.New_String(UnStr.To_String(Panel.Adaptable_Parameters.Element(Index).Units_Name)),
+                      Interfaces.C.Strings.New_String(UnStr.To_String(Widget.Adaptable_Parameters.Element(Index).Units_Name)),
                       Extents'access);
          if Extents.Width > Width then
             Width := Extents.Width;
@@ -183,7 +183,7 @@ package body Control_Panel is
    -- GET_SET_DATA_ELEMENT_COLUMN_WIDTH --
    ---------------------------------------
 
-   function Get_Set_Data_Element_Column_Width (Panel   : access Control_Panel_Widget_Record'Class;
+   function Get_Set_Data_Element_Column_Width (Widget  : access Control_Panel_Widget_Record'Class;
                                                Context : Cairo_Context) return GDouble is
      Extents : aliased Cairo_Text_Extents;
      Font    : Cairo_Scaled_Font := Get_Scaled_Font(Context);
@@ -191,9 +191,9 @@ package body Control_Panel is
    begin
       Text_Extents(Font, Interfaces.C.Strings.New_String(Set_Data_Element_Column_Text), Extents'access);
       Width := Extents.Width;
-      for Index in Natural range 0 .. Natural(Panel.Adaptable_Parameters.Length) - 1 loop
+      for Index in Natural range 0 .. Natural(Widget.Adaptable_Parameters.Length) - 1 loop
          Text_Extents(Font,
-                      Interfaces.C.Strings.New_String(UnStr.To_String(Panel.Set_Values.Element(Index))),
+                      Interfaces.C.Strings.New_String(UnStr.To_String(Widget.Set_Values.Element(Index))),
                       Extents'access);
          if Extents.Width > Width then
             Width := Extents.Width;
@@ -206,7 +206,7 @@ package body Control_Panel is
    -- GET_REQUESTING_DATA_COLUMN_WIDTH --
    --------------------------------------
 
-   function Get_Requesting_Data_Column_Width (Panel   : access Control_Panel_Widget_Record'Class;
+   function Get_Requesting_Data_Column_Width (Widget  : access Control_Panel_Widget_Record'Class;
                                     Context : Cairo_Context) return GDouble is
      Extents : aliased Cairo_Text_Extents;
      Font    : Cairo_Scaled_Font := Get_Scaled_Font(Context);
@@ -221,7 +221,7 @@ package body Control_Panel is
    -- GET_REQUEST_PERIOD_COLUMN_WIDTH --
    -------------------------------------
 
-   function Get_Request_Period_Column_Width (Panel   : access Control_Panel_Widget_Record'Class;
+   function Get_Request_Period_Column_Width (Widget  : access Control_Panel_Widget_Record'Class;
                                              Context : Cairo_Context) return GDouble is
      Extents : aliased Cairo_Text_Extents;
      Font    : Cairo_Scaled_Font := Get_Scaled_Font(Context);
@@ -229,9 +229,9 @@ package body Control_Panel is
    begin
       Text_Extents(Font, Interfaces.C.Strings.New_String(Request_Period_Column_Text), Extents'access);
       Width := Extents.Width;
-      for Index in Natural range 0 .. Natural(Panel.Adaptable_Parameters.Length) - 1 loop
+      for Index in Natural range 0 .. Natural(Widget.Adaptable_Parameters.Length) - 1 loop
          Text_Extents(Font,
-                      Interfaces.C.Strings.New_String(UnStr.To_String(Panel.Adaptable_Parameters.Element(Index).Sample_Period)),
+                      Interfaces.C.Strings.New_String(UnStr.To_String(Widget.Adaptable_Parameters.Element(Index).Sample_Period)),
                       Extents'access);
          if Extents.Width > Width then
             Width := Extents.Width;
@@ -244,7 +244,7 @@ package body Control_Panel is
    -- GET_LOG_DATA_COLUMN_WIDTH --
    -------------------------------
 
-   function Get_Log_Data_Column_Width (Panel   : access Control_Panel_Widget_Record'Class;
+   function Get_Log_Data_Column_Width (Widget  : access Control_Panel_Widget_Record'Class;
                                        Context : Cairo_Context) return GDouble is
      Extents : aliased Cairo_Text_Extents;
      Font    : Cairo_Scaled_Font := Get_Scaled_Font(Context);
@@ -469,6 +469,10 @@ package body Control_Panel is
       for Index in Natural range 0 .. Natural(Widget.Adaptable_Parameters.Length) - 1 loop
          Move_To(Context, Widget_Horizontal_Start, Widget_Vertical_Start + GDouble(Index) * Widget_Vertical_Pitch);
          Show_Text(Context, UnStr.To_String(Widget.Adaptable_Parameters.Element(Index).Friendly_Name));
+         Move_To(Context,
+                 Widget_Horizontal_Start + Get_Name_Column_Width(Widget, Context) + Title_Horizontal_Pad * 2.0,
+                 Widget_Vertical_Start + GDouble(Index) * Widget_Vertical_Pitch);
+         Show_Text(Context, UnStr.To_String(Widget.Values.Element(Index)));
       end loop;
 
       Move_To(Context, Widget_Horizontal_Start, Widget_Vertical_Start + GDouble(Widget.Adaptable_Parameters.Length) * Widget_Vertical_Pitch);
