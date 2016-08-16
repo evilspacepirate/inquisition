@@ -467,12 +467,28 @@ package body Control_Panel is
       Set_Source_RGB(Context, 0.0, 0.0, 0.0);
 
       for Index in Natural range 0 .. Natural(Widget.Adaptable_Parameters.Length) - 1 loop
-         Move_To(Context, Widget_Horizontal_Start, Widget_Vertical_Start + GDouble(Index) * Widget_Vertical_Pitch);
-         Show_Text(Context, UnStr.To_String(Widget.Adaptable_Parameters.Element(Index).Friendly_Name));
+         -- Draw adaptable parameter friendly names column --
          Move_To(Context,
-                 Widget_Horizontal_Start + Get_Name_Column_Width(Widget, Context) + Title_Horizontal_Pad * 2.0,
+                 Widget_Horizontal_Start,
+                 Widget_Vertical_Start + GDouble(Index) * Widget_Vertical_Pitch);
+         Show_Text(Context, UnStr.To_String(Widget.Adaptable_Parameters.Element(Index).Friendly_Name));
+
+         -- Draw adaptable parameter value column --
+         Move_To(Context,
+                 Widget_Horizontal_Start +
+                 Get_Name_Column_Width(Widget, Context) +
+                 Title_Horizontal_Pad * 2.0,
                  Widget_Vertical_Start + GDouble(Index) * Widget_Vertical_Pitch);
          Show_Text(Context, UnStr.To_String(Widget.Values.Element(Index)));
+
+         -- Draw adaptable parameter units columnt --
+         Move_To(Context,
+                 Widget_Horizontal_Start +
+                 Get_Name_Column_Width(Widget, Context) +
+                 Get_Value_Column_Width(Widget, Context) +
+                 Title_Horizontal_Pad * 4.0,
+                 Widget_Vertical_Start + GDouble(Index) * Widget_Vertical_Pitch);
+         Show_Text(Context, UnStr.To_String(Widget.Adaptable_Parameters.Element(Index).Units_Name));
       end loop;
 
       Move_To(Context, Widget_Horizontal_Start, Widget_Vertical_Start + GDouble(Widget.Adaptable_Parameters.Length) * Widget_Vertical_Pitch);
