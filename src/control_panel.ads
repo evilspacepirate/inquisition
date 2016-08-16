@@ -20,63 +20,35 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
-with Configuration; use Configuration;
-with Glib.Object;   use Glib.Object;
-with Glib.Values;   use Glib.Values;
-with Gtk.Tree_View; use Gtk.Tree_View;
-with Gtk.Window;    use Gtk.Window;
-with Interfaces;    use Interfaces;
+with Configuration;         use Configuration;
+with GLib;                  use GLib;
+with GLib.Object;           use GLib.Object;
+with GLib.Values;           use GLib.Values;
+with Gtk.Drawing_Area;
+with Gtk.Window;            use Gtk.Window;
+with Interfaces;            use Interfaces;
+with Primatives;            use Primatives;
 
 package Control_Panel is
 
-   View : Gtk_Tree_View;
+   type Control_Panel_Widget_Record is new Gtk.Drawing_Area.Gtk_Drawing_Area_Record with private;
+   type Control_Panel_Widget is access all Control_Panel_Widget_Record'Class;
 
-   type Parameter_Event_Callback is access procedure (Parameter_Index : Natural);
-   type Parameter_Boolean_Update_Event_Callback is access procedure (Parameter_Index : Natural;
-                                                                     Value           : Boolean);
-   type Parameter_Unsigned_32_Update_Event_Callback is access procedure (Parameter_Index : Natural;
-                                                                         Value           : Unsigned_32);
-   type Parameter_Duration_Update_Event_Callback is access procedure (Parameter_Index : Natural;
-                                                                      Value           : Duration);
-
-   procedure Create(Main_Window : in out Gtk_Window);
-
-   procedure Set_Adaptable_Parameters(Parameters : in Adaptable_Parameter_Record_Vectors.Vector);
-
-   procedure Assign_Event_Callbacks(Log_Data_Updated         : in not null Parameter_Boolean_Update_Event_Callback;
-                                    Requesting_Data_Updated  : in not null Parameter_Boolean_Update_Event_Callback;
-                                    Set_Value_Clicked        : in not null Parameter_Unsigned_32_Update_Event_Callback;
-                                    Parameter_Double_Clicked : in not null Parameter_Event_Callback;
-                                    Request_Period_Updated   : in not null Parameter_Duration_Update_Event_Callback);
+   procedure Gtk_New (Widget : out Control_Panel_Widget);
+   procedure Initialize (Widget : access Control_Panel_Widget_Record'Class);
+   procedure Set_Adaptable_Parameters(Widget     : access Control_Panel_Widget_Record;
+                                      Parameters : in Adaptable_Parameter_Record_Vectors.Vector);
 
    procedure Update_UID_Value (UID   : Unsigned_16;
                                Value : Unsigned_32);
 
-   procedure Disable;
-
-   procedure Enable;
-
    private
 
-   procedure Logging_Checkbox_Toggled(Object : access GObject_Record'class;
-                                      Params : GValues); 
-
-   procedure Is_Requesting_Checkbox_Toggled(Object : access GObject_Record'class;
-                                            Params : GValues);
-
-   procedure Double_Click_On_Data_Element_Row(Object : access GObject_Record'class;
-                                              Params : GValues);
-
-   function Set_Button_Pressed(Object : access GObject_Record'class;
-                               Params : GValues) return Boolean;
-
-   function Set_Button_Released(Object : access GObject_Record'class;
-                                Params : GValues) return Boolean;
-
-   procedure Set_Value_Edited(Object : access GObject_Record'class;
-                              Params : GValues);
-
-   procedure Request_Period_Edited(Object : access GObject_Record'class;
-                                   Params : GValues);
+   type Control_Panel_Widget_Record is new Gtk.Drawing_Area.Gtk_Drawing_Area_Record with
+   record
+      Adaptable_Parameters : Adaptable_Parameter_Record_Vectors.Vector;
+      Values               : String_Vectors.Vector;
+      Set_Values           : String_Vectors.Vector;
+   end record;
 
 end Control_Panel;

@@ -20,483 +20,479 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
-with Ada.Text_IO;              use Ada.Text_IO;
-with Configuration;            use Configuration;
-with Control_Panel.Buttons;    use Control_Panel.Buttons;
-with Gdk.PixBuf;               use Gdk.PixBuf;
-with Glib;                     use Glib;
-with Gtk.Handlers;             use Gtk.Handlers;
-with Gtk.List_Store;           use Gtk.List_Store;
-with Gtk.Tree_Model;           use Gtk.Tree_Model;
-with Gtk.Tree_View;            use Gtk.Tree_View;
-with Gtk.Tree_View_Column;     use Gtk.Tree_View_Column;
-with Gtk.Cell_Renderer_Text;   use Gtk.Cell_Renderer_Text;
-with Gtk.Cell_Renderer_Toggle; use Gtk.Cell_Renderer_Toggle;
-with Gtk.Cell_Renderer_Pixbuf; use Gtk.Cell_Renderer_Pixbuf;
-with Gtk.Window;               use Gtk.Window;
-with Interfaces;               use Interfaces;
-with Primatives;               use Primatives;
-with Util;                     use Util;
+with Ada.Text_IO;           use Ada.Text_IO;
+with Cairo;                 use Cairo;
+with Cairo.Image_Surface;   use Cairo.Image_Surface;
+with Cairo.Font_Options;    use Cairo.Font_Options;
+with Configuration;         use Configuration;
+with Control_Panel.Buttons; use Control_Panel.Buttons;
+with GDK;                   use GDK;
+with GDK.Cairo;             use GDK.Cairo;
+with GDK.Color;             use GDK.Color;
+with GDK.Drawable;          use GDK.Drawable;
+with GDK.Event;             use GDK.Event;
+with GDK.GC;                use GDK.GC;
+with GDK.Window;            use GDK.Window;
+with GLib;                  use GLib;
+with GLib.Object;           use GLib.Object;
+with GTK;                   use GTK;
+with GTK.Drawing_Area;      use GTK.Drawing_Area;
+with GTK.Widget;            use GTK.Widget;
+with GTK.Handlers;          use GTK.Handlers;
+with GTKAda.Types;          use GTKAda.Types;
+with Interfaces;            use Interfaces;
+with Interfaces.C.Strings;
+with Pango.Cairo;           use Pango.Cairo;
+with Pango.Context;         use Pango.Context;
+with Pango.Font;            use Pango.Font;
+with Pango.Layout;          use Pango.Layout;
+with Primatives;            use Primatives;
+with Util;                  use Util;
 
 package body Control_Panel is
 
-   package Object_Callback is new Gtk.Handlers.Callback (GObject_Record);
-   package Return_Callbacks is new Gtk.Handlers.Return_Callback(Gobject_Record, Boolean);
+   package Internal_Callback is new Handlers.Callback (Control_Panel_Widget_Record);
+   package Return_Boolean_Callback is new Handlers.Return_Callback (Control_Panel_Widget_Record, Boolean);
+   package Size_Callback is new Handlers.Callback (Control_Panel_Widget_Record);
+   package Requisition_Marshaller is new Size_Callback.Marshallers.Generic_Marshaller (Gtk_Requisition_Access, Gtk.Widget.Get_Requisition);
+   package Allocation_Callback is new Handlers.Callback (Control_Panel_Widget_Record);
+   package Allocation_Marshaller is new Allocation_Callback.Marshallers.Generic_Marshaller (Gtk_Allocation_Access, Gtk.Widget.Get_Allocation);
 
-   Store                              : Gtk_List_Store;
-   Column                             : aliased Gtk_Tree_View_Column;
-   Clicked_Row_Iter                   : Gtk_Tree_Iter;
+   Signals      : Chars_Ptr_Array := Null_Array;
+   Class_Record : GObject_Class   := Uninitialized_Class;
 
-   Name_ID                            : constant :=  0;
-   Value_ID                           : constant :=  1;
-   Units_ID                           : constant :=  2;
-   Set_Button_ID                      : constant :=  3;
-   Set_Value_ID                       : constant :=  4;
-   Set_Value_Is_Editable_ID           : constant :=  5;
-   Is_Requesting_Data_ID              : constant :=  6;
-   Is_Requesting_Data_Is_Checkable_ID : constant :=  7;
-   Data_Request_Period_ID             : constant :=  8;
-   Data_Request_Period_Is_Editable_ID : constant :=  9;
-   Is_Logged_ID                       : constant := 10;
-   Is_Logged_Is_Checkable_ID          : constant := 11;
+   Button_Width                 : constant :=     75;
+   Button_Height                : constant :=     25;
+   Widget_Vertical_Start        : constant :=   41.0;
+   Widget_Horizontal_Start      : constant :=    5.0;
+   Widget_Vertical_Pitch        : constant :=   25.0;
+   Border_Width                 : constant := 8000.0;
+   Border_Top_Line_Y            : constant :=    1.0;
+   Border_Bottom_Line_Y         : constant :=   23.0;
+   Border_Light_Gradient_Base   : constant := 16#F7#;
+   Border_Dark_Gradient_Base    : constant := 16#D7#;
+   Border_Text_Vertical_Start   : constant :=   16.0;
+   Background_Color             : constant := 16#F7#;
+   Title_Horizontal_Pad         : constant :=    7.0;
 
-   Button_Width                       : constant := 75;
-   Button_Height                      : constant := 25;
+   Name_Column_Text             : constant String := "Name";
+   Value_Column_Text            : constant String := "Value";
+   Units_Column_Text            : constant String := "Units";
+   Set_Data_Element_Column_Text : constant String := "Set Data Element";
+   Set_Value_Column_Text        : constant String := "Set Value";
+   Requesting_Data_Column_Text  : constant String := "Requesting Data";
+   Request_Period_Column_Text   : constant String := "Request Period";
+   Log_Data_Column_Text         : constant String := "Log Data";
 
-   Text_Renderer                      : Gtk_Cell_Renderer_Text;
-   Toggle_Renderer                    : Gtk_Cell_Renderer_Toggle;
-   Pix_Renderer                       : Gtk_Cell_Renderer_PixBuf;
+   Panel_Enabled                : Boolean := False;
 
-   Button_Clicked_Pix                 : Gdk_PixBuf;
-   Button_Unclicked_Pix               : Gdk_PixBuf;
-   Button_Disabled_Pix                : Gdk_PixBuf;
+   UID_To_AP_Index_Map          : Name_Index_Maps.Map;
+   Size_Requested               : Boolean := False;
 
-   Window                             : Gtk_Window;
+   -------------
+   -- GTK_NEW --
+   -------------
 
-   On_Log_Data_Updated                : Parameter_Boolean_Update_Event_Callback;
-   On_Requesting_Data_Updated         : Parameter_Boolean_Update_Event_Callback;
-   On_Set_Value_Clicked               : Parameter_Unsigned_32_Update_Event_Callback;
-   On_Parameter_Double_Clicked        : Parameter_Event_Callback;
-   On_Request_Period_Updated          : Parameter_Duration_Update_Event_Callback;
-
-   Adaptable_Parameters               : Adaptable_Parameter_Record_Vectors.Vector;
-
-   Panel_Enabled                      : Boolean := False;
-
-   UID_To_AP_Index_Map                : Name_Index_Maps.Map;
-
-   ------------
-   -- CREATE --
-   ------------
-
-   procedure Create (Main_Window : in out Gtk_Window) is
-      Column_Number : GInt;
+   procedure GTK_New (Widget : out Control_Panel_Widget) is
    begin
+      Widget := new Control_Panel_Widget_Record;
+      Control_Panel.Initialize(Widget);
+   end GTK_New;
 
-      -- Save a handle to the main window so we can determine the --
-      -- X, Y location of mouse clicks later.                     --
-      Window := Main_Window;
+   ------------------
+   -- TEXT_EXTENTS --
+   ------------------
 
-      -- Create Button Images --
-      Button_Clicked_Pix   := Gdk_New_From_XPM_Data(Button_Clicked_XPM);
-      Button_UnClicked_Pix := Gdk_New_From_XPM_Data(Button_Unclicked_XPM);
-      Button_Disabled_Pix  := Gdk_New_From_XPM_Data(Button_Disabled_XPM);
-      Button_Clicked_Pix   := Scale_Simple(Button_Clicked_Pix, Button_Width, Button_Height);
-      Button_UnClicked_Pix := Scale_Simple(Button_Unclicked_Pix, Button_Width, Button_Height);
-      Button_Disabled_Pix  := Scale_Simple(Button_Disabled_Pix, Button_Width, Button_Height);
+   procedure Text_Extents (Font    : Cairo_Scaled_Font;
+                           UTF8    : Interfaces.C.Strings.Chars_Ptr;
+                           Extents : access Cairo_Text_Extents);
+   -- XXX Use custom Text_Extents signature until GTK Ada fixes their signature XXX --
+   -- XXX We need Extents to be an access type.                                 XXX --
+   pragma Import(C, Text_Extents, "cairo_scaled_font_text_extents");
 
-      -- Create View --
-      Gtk_New(View);
+   ---------------------------
+   -- GET_NAME_COLUMN_WIDTH --
+   ---------------------------
 
-      -- Create Model --
-      Gtk_New(Store, (Name_ID                            => GType_String,
-                      Value_ID                           => GType_String,
-                      Units_ID                           => GType_String,
-                      Set_Button_ID                      => GType_Object,
-                      Set_Value_ID                       => GType_String,
-                      Set_Value_Is_Editable_ID           => GType_Boolean,
-                      Is_Requesting_Data_ID              => GType_Boolean,
-                      Is_Requesting_Data_Is_Checkable_ID => GType_Boolean,
-                      Data_Request_Period_ID             => GType_String,
-                      Data_Request_Period_Is_Editable_ID => GType_Boolean,
-                      Is_Logged_ID                       => GType_Boolean,
-                      Is_Logged_Is_Checkable_ID          => GType_Boolean));
+   function Get_Name_Column_Width (Panel   : access Control_Panel_Widget_Record'Class;
+                                   Context : Cairo_Context) return GDouble is
+      Extents : aliased Cairo_Text_Extents;
+      Font    : Cairo_Scaled_Font := Get_Scaled_Font(Context);
+      Width   : GDouble           := 0.0;
+   begin
+      Text_Extents(Font, Interfaces.C.Strings.New_String(Name_Column_Text), Extents'access);
+      Width := Extents.Width;
+      for Index in Natural range 0 .. Natural(Panel.Adaptable_Parameters.Length) - 1 loop
+         Text_Extents(Font,
+                      Interfaces.C.Strings.New_String(UnStr.To_String(Panel.Adaptable_Parameters.Element(Index).Friendly_Name)),
+                      Extents'access);
+         if Extents.Width > Width then
+            Width := Extents.Width;
+         end if;
+      end loop;
+      return Width;
+   end Get_Name_Column_Width;
 
-      -- Attach model to view --
-      
-      Set_Model(View.all'access, store.all'access);
+   ----------------------------
+   -- GET_VALUE_COLUMN_WIDTH --
+   ----------------------------
 
-      -- Add column renderers to the TreeView --
+   function Get_Value_Column_Width (Panel   : access Control_Panel_Widget_Record'Class;
+                                    Context : Cairo_Context) return GDouble is
+     Extents : aliased Cairo_Text_Extents;
+     Font    : Cairo_Scaled_Font := Get_Scaled_Font(Context);
+     Width   : GDouble           := 0.0;
+   begin
+      Text_Extents(Font, Interfaces.C.Strings.New_String(Value_Column_Text), Extents'access);
+      Width := Extents.Width;
+      for Index in Natural range 0 .. Natural(Panel.Adaptable_Parameters.Length) - 1 loop
+         Text_Extents(Font,
+                      Interfaces.C.Strings.New_String(UnStr.To_String(Panel.Values.Element(Index))),
+                      Extents'access);
+         if Extents.Width > Width then
+            Width := Extents.Width;
+         end if;
+      end loop;
+      return Width;
+   end Get_Value_Column_Width;
 
-      -- Data Element Name Column --
-      
-      Gtk_New(Column);
-      Gtk_New(Text_Renderer);
+   ----------------------------
+   -- GET_UNITS_COLUMN_WIDTH --
+   ----------------------------
 
-      Set_Title(Column, "Name");
-      Pack_Start(Column.all'access, Text_Renderer, True);
-      Set_Sizing(Column, Tree_View_Column_Autosize);
-      Add_Attribute(Column, Text_Renderer, "text", Name_ID);
-      Column_Number := Append_Column(View.all'access, Column.all'access);
+   function Get_Units_Column_Width (Panel   : access Control_Panel_Widget_Record'Class;
+                                    Context : Cairo_Context) return GDouble is
+     Extents : aliased Cairo_Text_Extents;
+     Font    : Cairo_Scaled_Font := Get_Scaled_Font(Context);
+     Width   : GDouble           := 0.0;
+   begin
+      Text_Extents(Font, Interfaces.C.Strings.New_String(Units_Column_Text), Extents'access);
+      Width := Extents.Width;
+      for Index in Natural range 0 .. Natural(Panel.Adaptable_Parameters.Length) - 1 loop
+         Text_Extents(Font,
+                      Interfaces.C.Strings.New_String(UnStr.To_String(Panel.Adaptable_Parameters.Element(Index).Units_Name)),
+                      Extents'access);
+         if Extents.Width > Width then
+            Width := Extents.Width;
+         end if;
+      end loop;
+      return Width;
+   end Get_Units_Column_Width;
 
-      Gtk_New(Column);
-      Gtk_New(Text_Renderer);
+   ---------------------------------------
+   -- GET_SET_DATA_ELEMENT_COLUMN_WIDTH --
+   ---------------------------------------
 
-      -- Data Element Value Column --
-      
-      Set_Title(Column, "Value");
-      Pack_Start(Column.all'access, Text_Renderer, True);
-      Set_Sizing(Column, Tree_View_Column_Autosize);
-      Add_Attribute(Column, Text_Renderer, "text", Value_ID);
-      Column_Number := Append_Column(View.all'access, Column.all'access);
+   function Get_Set_Data_Element_Column_Width (Panel   : access Control_Panel_Widget_Record'Class;
+                                               Context : Cairo_Context) return GDouble is
+     Extents : aliased Cairo_Text_Extents;
+     Font    : Cairo_Scaled_Font := Get_Scaled_Font(Context);
+     Width   : GDouble           := 0.0;
+   begin
+      Text_Extents(Font, Interfaces.C.Strings.New_String(Set_Data_Element_Column_Text), Extents'access);
+      Width := Extents.Width;
+      for Index in Natural range 0 .. Natural(Panel.Adaptable_Parameters.Length) - 1 loop
+         Text_Extents(Font,
+                      Interfaces.C.Strings.New_String(UnStr.To_String(Panel.Set_Values.Element(Index))),
+                      Extents'access);
+         if Extents.Width > Width then
+            Width := Extents.Width;
+         end if;
+      end loop;
+      return Width;
+   end Get_Set_Data_Element_Column_Width;
 
-      -- Data Element Units Column --
-      
-      Gtk_New(Column);
-      Gtk_New(Text_Renderer);
+   --------------------------------------
+   -- GET_REQUESTING_DATA_COLUMN_WIDTH --
+   --------------------------------------
 
-      Set_Title(Column, "Units");
-      Pack_Start(Column.all'access, Text_Renderer, True);
-      Set_Sizing(Column, Tree_View_Column_Autosize);
-      Add_Attribute(Column, Text_Renderer, "text", Units_ID);
-      Column_Number := Append_Column(View.all'access, Column.all'access);
+   function Get_Requesting_Data_Column_Width (Panel   : access Control_Panel_Widget_Record'Class;
+                                    Context : Cairo_Context) return GDouble is
+     Extents : aliased Cairo_Text_Extents;
+     Font    : Cairo_Scaled_Font := Get_Scaled_Font(Context);
+     Width   : GDouble           := 0.0;
+   begin
+      Text_Extents(Font, Interfaces.C.Strings.New_String(Requesting_Data_Column_Text), Extents'access);
+      Width := Extents.Width;
+      return Width;
+   end Get_Requesting_Data_Column_Width;
 
-      -- Set Data Element Button Column --
-      
-      Gtk_New(Column);
-      Gtk_New(Pix_Renderer);
+   -------------------------------------
+   -- GET_REQUEST_PERIOD_COLUMN_WIDTH --
+   -------------------------------------
 
-      Set_Title(Column, "Set Data Element");
-      Pack_Start(Column.all'access, Pix_Renderer, True);
-      Add_Attribute(Column, Pix_Renderer, "pixbuf", Set_Button_ID);
-      Column_Number := Append_Column(View.all'access, Column.all'access);
+   function Get_Request_Period_Column_Width (Panel   : access Control_Panel_Widget_Record'Class;
+                                             Context : Cairo_Context) return GDouble is
+     Extents : aliased Cairo_Text_Extents;
+     Font    : Cairo_Scaled_Font := Get_Scaled_Font(Context);
+     Width   : GDouble           := 0.0;
+   begin
+      Text_Extents(Font, Interfaces.C.Strings.New_String(Request_Period_Column_Text), Extents'access);
+      Width := Extents.Width;
+      for Index in Natural range 0 .. Natural(Panel.Adaptable_Parameters.Length) - 1 loop
+         Text_Extents(Font,
+                      Interfaces.C.Strings.New_String(UnStr.To_String(Panel.Adaptable_Parameters.Element(Index).Sample_Period)),
+                      Extents'access);
+         if Extents.Width > Width then
+            Width := Extents.Width;
+         end if;
+      end loop;
+      return Width;
+   end Get_Request_Period_Column_Width;
 
-      -- Set Value ID Editbox Column --
-      
-      Gtk_New(Column);
-      Gtk_New(Text_Renderer);
+   -------------------------------
+   -- GET_LOG_DATA_COLUMN_WIDTH --
+   -------------------------------
 
-      Set_Title(Column, "Set Value");
-      Pack_Start(Column.all'access, Text_Renderer, True);
-      set_sizing(Column, Tree_View_Column_Autosize);
-      Add_Attribute(Column, Text_Renderer, "text", Set_Value_ID);
-      Add_Attribute(Column, Text_Renderer, "editable", Set_Value_Is_Editable_ID);
-      Column_Number := Append_Column(View.all'access, Column.all'access);
-      Object_Callback.Object_Connect(Text_Renderer, "edited", Set_Value_Edited'access, Slot_Object => Store);
+   function Get_Log_Data_Column_Width (Panel   : access Control_Panel_Widget_Record'Class;
+                                       Context : Cairo_Context) return GDouble is
+     Extents : aliased Cairo_Text_Extents;
+     Font    : Cairo_Scaled_Font := Get_Scaled_Font(Context);
+     Width   : GDouble           := 0.0;
+   begin
+      Text_Extents(Font,
+                   Interfaces.C.Strings.New_String(Log_Data_Column_Text),
+                   Extents'access);
+      Width := Extents.Width;
+      return Width;
+   end Get_Log_Data_Column_Width;
 
-      -- Is Requesting Data Checkbox --
+   ------------------
+   -- SIZE_REQUEST --
+   ------------------
 
-      Gtk_New(Column);
-      Gtk_New(Toggle_Renderer);
-
-      Set_Title(Column, "Requesting Data");
-      Pack_Start(Column.all'access, Toggle_Renderer, True);
-      Add_Attribute(Column, Toggle_Renderer, "active", Is_Requesting_Data_ID);
-      Add_Attribute(Column, Toggle_Renderer, "activatable", Is_Requesting_Data_Is_Checkable_ID);
-      Column_Number := Append_Column(View.all'access, Column.all'access);
-      Object_Callback.Object_Connect(Toggle_Renderer, "toggled", Is_Requesting_Checkbox_Toggled'access, Store);
-
-      -- Data Request Period Editbox Column --
-
-      Gtk_New(Column);
-      Gtk_New(Text_Renderer);
-
-      Set_Title(Column, "Request Period");
-      Pack_Start(Column.all'access, Text_Renderer, True);
-      set_sizing(Column, Tree_View_Column_Autosize);
-      Add_Attribute(Column, Text_Renderer, "text", Data_Request_Period_ID);
-      Add_Attribute(Column, Text_Renderer, "editable", Data_Request_Period_Is_Editable_ID);
-      Column_Number := Append_Column(View.all'access, Column.all'access);
-      Object_Callback.Object_Connect(Text_Renderer, "edited", Request_Period_Edited'access, Slot_Object => Store);
-
-      -- Is Logged Checkbox --
-
-      Gtk_New(Column);
-      Gtk_New(Toggle_Renderer);
-
-      Set_Title(Column, "Log Data");
-      Pack_Start(Column.all'access, Toggle_Renderer, True);
-      Add_Attribute(Column, Toggle_Renderer, "active", Is_Logged_ID);
-      Add_Attribute(Column, Toggle_Renderer, "activatable", Is_Logged_Is_Checkable_ID);
-      Column_Number := Append_Column(View.all'access, Column.all'access);
-      Object_Callback.Object_Connect(Toggle_Renderer, "toggled", Logging_Checkbox_Toggled'access, Store);
-
-      -- Connect double-click callback for the tree view --
-
-      Object_Callback.Connect(View, "row-activated", Double_Click_On_Data_Element_Row'access);
-      Return_Callbacks.Connect(View, "button-press-event", Set_Button_Pressed'access);
-      Return_Callbacks.Connect(View, "button-release-event", Set_Button_Released'access);
-
-   end Create;
+   procedure Size_Request (Widget      : access Control_Panel_Widget_Record'Class;
+                           Requisition : in Gtk_Requisition_Access) is
+   begin
+      Requisition.Width  := 1;
+      Requisition.Height := 300;
+      Gtk.Handlers.Emit_Stop_By_Name (Widget, "size_request");
+   end Size_Request;
 
    ------------------------------
    -- SET_ADAPTABLE_PARAMETERS --
    ------------------------------
 
-   procedure Set_Adaptable_Parameters(Parameters : in Adaptable_Parameter_Record_Vectors.Vector) is
+   procedure Set_Adaptable_Parameters(Widget     : access Control_Panel_Widget_Record;
+                                      Parameters : in Adaptable_Parameter_Record_Vectors.Vector) is
       use Adaptable_Parameter_Record_Vectors;
-      Iter : Gtk_Tree_Iter := Null_Iter;
    begin
-      Adaptable_Parameters := Parameters;
-      for Index in Natural range 0 .. Natural(Length(Parameters)) - 1 loop
+      Widget.Adaptable_Parameters := Parameters;
+      Widget.Values.Clear;
+      Widget.Set_Values.Clear;
 
-         -- Add reference to AP in the UID to AP Index map --
-         declare
-            Index_Vector : Natural_Vectors.Vector;
-            UID          : constant Unsigned_16 := Parameters.Element(Index).Unique_Identifier;
-         begin
-            if UID_To_AP_Index_Map.Contains(UID) then
-               Index_Vector := UID_To_AP_Index_Map.Element(UID);
-               Index_Vector.Append(Index);
-               UID_To_AP_Index_Map.Replace(UID, Index_Vector);
-            else
-               Index_Vector.Append(Index);
-               UID_To_AP_Index_Map.Insert(UID, Index_Vector);
-            end if;
-         end;
-
-         Append(Store.all'access, Iter);
-         Set(Store.all'access, Iter, Name_ID,  UnStr.To_String(Parameters.Element(Index).Friendly_Name));
-         Set(Store.all'access, Iter, Units_ID, UnStr.To_String(Parameters.Element(Index).Units_Name));
-
-         if Parameters.Element(Index).Is_Readable then
-            -- Readable --
-            Set(Store.all'access, Iter, Value_ID,                           "-");
-            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID,           False);
-            Set(Store.all'access, Iter, Is_Requesting_Data_ID,              Parameters.Element(Index).Is_Sampling);
-            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, False);
-            Set(Store.all'access, Iter, Data_Request_Period_ID,             UnStr.To_String(Parameters.Element(Index).Sample_Period));
-            Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, True);
-            Set(Store.all'access, Iter, Is_Logged_ID,                       False);
-            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          False);
-         else
-            -- Not Readable --
-            Set(Store.all'access, Iter, Is_Requesting_Data_ID,              False);
-            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, False);
-            Set(Store.all'access, Iter, Data_Request_Period_ID,             "");
-            Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, False);
-            Set(Store.all'access, Iter, Is_Logged_ID,                       False);
-            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          False);
-         end if;
-
-         if Parameters.Element(Index).Is_Writable then
-            -- Writable --
-            Set(Store.all'access, Iter, Set_Button_ID,            Button_Disabled_Pix);
-            Set(Store.all'access, Iter, Set_Value_ID,             Unsigned_32'image(Parameters.Element(Index).Default_Set_Value));
-            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, True);
-         else
-            -- Not Writable --
-            Set(Store.all'access, Iter, Set_Value_ID,             "");
-            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, False);
-         end if;
+      for Index in Natural range 0 .. Natural(Parameters.Length) - 1 loop
+         Widget.Values.Append(UnStr.To_Unbounded_String("-"));
+         case Widget.Adaptable_Parameters.Element(Index).Display_As is
+            when IEEE754 =>
+               Widget.Set_Values.Append(UnStr.To_Unbounded_String("[IEEE754 Not Supported]"));
+               -- TODO --
+            when Signed =>
+               Widget.Set_Values.Append(UnStr.To_Unbounded_String("[Signed Not Supported]"));
+               -- TODO --
+            when Unsigned =>
+               Widget.Set_Values.Append(UnStr.To_Unbounded_String(Unsigned_32'Image(Widget.Adaptable_Parameters.Element(Index).Default_Set_Value)));
+            when Hex =>
+               Widget.Set_Values.Append(UnStr.To_Unbounded_String(To_Hex(Widget.Adaptable_Parameters.Element(Index).Default_Set_Value)));
+         end case;
       end loop;
+      -- TODO Redraw widget --
    end Set_Adaptable_Parameters;
 
-   ----------------------------
-   -- ASSIGN_EVENT_CALLBACKS --
-   ----------------------------
+   --------------
+   -- ON_CLICK --
+   --------------
 
-   procedure Assign_Event_Callbacks(Log_Data_Updated         : in not null Parameter_Boolean_Update_Event_Callback;
-                                    Requesting_Data_Updated  : in not null Parameter_Boolean_Update_Event_Callback;
-                                    Set_Value_Clicked        : in not null Parameter_Unsigned_32_Update_Event_Callback;
-                                    Parameter_Double_Clicked : in not null Parameter_Event_Callback;
-                                    Request_Period_Updated   : in not null Parameter_Duration_Update_Event_Callback) is
-   begin
-      On_Log_Data_Updated         := Log_Data_Updated;
-      On_Requesting_Data_Updated  := Requesting_Data_Updated;
-      On_Set_Value_Clicked        := Set_Value_Clicked;
-      On_Parameter_Double_Clicked := Parameter_Double_Clicked;
-      On_Request_Period_Updated   := Request_Period_Updated;
-   end Assign_Event_Callbacks;
-
-   ------------------------------
-   -- LOGGING_CHECKBOX_TOGGLED --
-   ------------------------------
-
-   procedure Logging_Checkbox_Toggled(Object : access GObject_Record'class;
-                                      Params : GValues) is
-      Old_Value : Boolean;
-      New_Value : Boolean;
-      Path      : constant String        := Get_String(Nth(Params, 1));
-      Iter      : constant Gtk_Tree_Iter := Get_Iter_From_String(Store, Path);
-   begin
-      if Panel_Enabled = False then
-         return;
-      end if;
-
-      Old_Value := Get_Boolean(Store, Iter, Is_Logged_ID);
-      New_Value := not Old_Value;
-      Set(Store, Iter, Is_Logged_ID, New_Value);
-      if On_Log_Data_Updated /= Null then
-         if New_Value then
-            On_Log_Data_Updated(Natural'Value(Path), True);
-         else
-            On_Log_Data_Updated(Natural'Value(Path), False);
-         end if;
-      end if;
-   end Logging_Checkbox_Toggled;
-
-   ------------------------------------
-   -- IS_REQUESTING_CHECKBOX_TOGGLED --
-   ------------------------------------
-
-   procedure Is_Requesting_Checkbox_Toggled(Object : access GObject_Record'class;
-                                            Params : GValues) is
-      Old_Value : Boolean;
-      New_Value : Boolean;
-      Path      : constant String        := Get_String(Nth(Params, 1));
-      Iter      : constant Gtk_Tree_Iter := Get_Iter_From_String(Store, Path);
-   begin
-      if Panel_Enabled = False then
-         return;
-      end if;
-
-      Old_Value := Get_Boolean(Store, Iter, Is_Requesting_Data_ID);
-      New_Value := not Old_Value;
-      Set(Store, Iter, Is_Requesting_Data_ID, New_Value);
-      if On_Requesting_Data_Updated /= Null then
-         if New_Value then
-            On_Requesting_Data_Updated(Natural'Value(Path), True);
-         else
-            On_Requesting_Data_Updated(Natural'Value(Path), False);
-         end if;
-      end if;
-   end Is_Requesting_Checkbox_Toggled;
-
-   --------------------------------------
-   -- DOUBLE_CLICK_ON_DATA_ELEMENT_ROW --
-   --------------------------------------
-
-   procedure Double_Click_On_Data_Element_Row(Object : access GObject_Record'class;
-                                              Params : GValues) is
-      Column : Gtk_Tree_View_Column;
-      Path   : Gtk_Tree_Path;
-   begin
-      if Panel_Enabled = False then
-         return;
-      end if;
-
-      Get_Cursor(View.all'access, Path, Column);
-      if On_Parameter_Double_Clicked /= Null then
-         On_Parameter_Double_Clicked(Natural'Value(To_String(Path)));
-      end if;
-   end Double_Click_On_Data_Element_Row;
-
-   ------------------------
-   -- SET_BUTTON_PRESSED --
-   ------------------------
-
-   function Set_Button_Pressed(Object : access GObject_Record'class;
-                               Params : GValues) return Boolean is
+   function On_Click (Widget : access Control_Panel_Widget_Record'Class;
+                      Event  : in Gdk_Event) return Boolean
+   is
       X      : GInt;
       Y      : GInt;
-      Cell_X : GInt;
-      Cell_Y : GInt;
-      Found  : Boolean;
-      Path   : Gtk_Tree_Path;
-      Column : Gtk_Tree_View_Column;
-      Iter   : Gtk_Tree_Iter;
+      Width  : GInt;
+      Height : GInt;
    begin
-      if Panel_Enabled = False then
-         return False;
+      Gdk.Drawable.Get_Size (Get_Window (Widget), Width, Height);
+      X := GInt(Get_X (Event));
+      Y := GInt(Get_Y (Event));
+      return True;
+   end On_Click;
+
+   -------------------
+   -- SIZE_ALLOCATE --
+   -------------------
+
+   procedure Size_Allocate (Widget     : access Control_Panel_Widget_Record'Class;
+                            Allocation : in     Gtk_Allocation_Access)
+   is
+   begin
+      if Realized_Is_Set (Widget) then
+         Gdk.Window.Move_Resize (Get_Window (Widget),
+                                 Allocation.X, Allocation.Y,
+                                 Gint (Allocation.Width),
+                                 Gint (Allocation.Height));
       end if;
+      Gtk.Handlers.Emit_Stop_By_Name (Widget, "size_allocate");
+   end Size_Allocate;
 
-      Get_Pointer(Window, X, Y);
+   ----------------
+   -- DRAW_TITLE --
+   ----------------
 
-      Convert_Widget_To_Tree_Coords(View, X, Y, X, Y);
+   procedure Draw_Title (Widget  : access Control_Panel_Widget_Record'Class;
+                         Context : Cairo_Context) is
+   begin
+      Set_Source_RGB(Context, 0.1, 0.1, 0.1);
+      Select_Font_Face(Context, "Helvetica", Cairo_Font_Slant_Normal, Cairo_Font_Weight_Normal);
+      Set_Font_Size(Context, 13.0);
+      Set_Line_Width(Context, 0.5);
 
-      Get_Path_At_Pos(View, X, Y, Path, Column, Cell_X, Cell_Y, Found);
+      for Index in Natural range 2 .. 22 loop
+         declare
+            Step : constant Float := (Float(Border_Light_Gradient_Base) - Float(Border_Dark_Gradient_Base)) / 20.0;
+         begin
+            Set_Source_RGB(Context,
+                           GDouble((Float(Border_Light_Gradient_Base) - Step * Float(Index)) / Float(16#FF#)),
+                           GDouble((Float(Border_Light_Gradient_Base) - Step * Float(Index)) / Float(16#FF#)),
+                           GDouble((Float(Border_Light_Gradient_Base) - Step * Float(Index)) / Float(16#FF#)));
+            Move_To(Context, 0.0, GDouble(Border_Top_Line_Y) + GDouble(Index));
+            Line_To(Context, Border_Width, GDouble(Border_Top_Line_Y) + GDouble(Index));
+            Stroke(Context);
+         end;
+      end loop;
 
       declare
-         use Adaptable_Parameter_Record_Vectors;
-         Parameter_Clicked : Adaptable_Parameter_Record := Element(Adaptable_Parameters, Natural'Value(To_String(Path)));
+         X : GDouble := Widget_Horizontal_Start;
       begin
-         if Parameter_Clicked.Is_Writable = False then
-            -- Set button only works for writable adaptable parameters --
-            return False;
-         end if;
+         Set_Source_RGB(Context, 0.0, 0.0, 0.0);
 
-         if Found then
-           if Get_Title(Column) = "Set Data Element" then
-              Iter := Get_Iter_From_String(Store, To_String(Path));
-              Set(Store, Iter, Set_Button_ID, Button_Clicked_Pix);
-              Clicked_Row_Iter := Iter;
-              if On_Set_Value_Clicked /= Null then
-                 On_Set_Value_Clicked(Natural'Value(To_String(Path)), String_To_Unsigned_32(Get_String(Store, Iter, Set_Value_ID)));
-              end if;
-           end if;
-         else
-           Clicked_Row_Iter := Null_Iter;
-         end if;
+         Move_To(Context, X, Border_Text_Vertical_Start);
+         Show_Text(Context, Name_Column_Text);
+         X := X + Get_Name_Column_Width(Widget, Context) + Title_Horizontal_Pad;
+         Move_To(Context, X,  0.0);
+         Line_To(Context, X, 23.0);
+         X := X + Title_Horizontal_Pad;
+         Stroke(Context);
+
+         Move_To(Context, X, Border_Text_Vertical_Start);
+         Show_Text(Context, Value_Column_Text);
+         X := X + Get_Value_Column_Width(Widget, Context) + Title_Horizontal_Pad;
+         Move_To(Context, X,  0.0);
+         Line_To(Context, X, 23.0);
+         X := X + Title_Horizontal_Pad;
+         Stroke(Context);
+
+         Move_To(Context, X, Border_Text_Vertical_Start);
+         Show_Text(Context, Units_Column_Text);
+         X := X + Get_Units_Column_Width(Widget, Context) + Title_Horizontal_Pad;
+         Move_To(Context, X,  0.0);
+         Line_To(Context, X, 23.0);
+         X := X + Title_Horizontal_Pad;
+         Stroke(Context);
+
+         Move_To(Context, X, Border_Text_Vertical_Start);
+         Show_Text(Context, Set_Data_Element_Column_Text);
+         X := X + Get_Set_Data_Element_Column_Width(Widget, Context) + Title_Horizontal_Pad;
+         Move_To(Context, X,  0.0);
+         Line_To(Context, X, 23.0);
+         X := X + Title_Horizontal_Pad;
+         Stroke(Context);
+
+         Move_To(Context, X, Border_Text_Vertical_Start);
+         Show_Text(Context, Requesting_Data_Column_Text);
+         X := X + Get_Requesting_Data_Column_Width(Widget, Context) + Title_Horizontal_Pad;
+         Move_To(Context, X,  0.0);
+         Line_To(Context, X, 23.0);
+         X := X + Title_Horizontal_Pad;
+         Stroke(Context);
+
+         Move_To(Context, X, Border_Text_Vertical_Start);
+         Show_Text(Context, Request_Period_Column_Text);
+         X := X + Get_Request_Period_Column_Width(Widget, Context) + Title_Horizontal_Pad;
+         Move_To(Context, X,  0.0);
+         Line_To(Context, X, 23.0);
+         X := X + Title_Horizontal_Pad;
+         Stroke(Context);
+
+         Move_To(Context, X, Border_Text_Vertical_Start);
+         Show_Text(Context, Log_Data_Column_Text);
+         X := X + Get_Log_Data_Column_Width(Widget, Context) + Title_Horizontal_Pad;
+         Move_To(Context, X,  0.0);
+         Line_To(Context, X, 23.0);
+         X := X + Title_Horizontal_Pad;
+         Stroke(Context);
       end;
-      return False;
-   end Set_Button_Pressed;
+   end Draw_Title;
 
-   -------------------------
-   -- SET_BUTTON_RELEASED --
-   -------------------------
+   ----------
+   -- DRAW --
+   ----------
 
-   function Set_Button_Released(Object : access GObject_Record'class;
-                                Params : GValues) return Boolean is
+   function Draw (Widget : access Control_Panel_Widget_Record'Class) return Boolean is
+      Window   : aliased Gdk.Window.Gdk_Window := Get_Window(Widget);
+      Drawable : GDK.Drawable.GDK_Drawable;
+      Context  : Cairo_Context;
+      X        : GInt;
+      Y        : GInt;
+      Width    : GInt;
+      Height   : GInt;
+      Depth    : GInt;
    begin
-      if Panel_Enabled = False then
-         return False;
+      Get_Geometry(Window, X, Y, Width, Height, Depth);
+      Drawable := GDK.Drawable.GDK_Drawable(Window);
+      Context  := Create(Drawable);
+
+      Set_Source_RGB(Context,
+                     GDouble(Background_Color) / GDouble(16#FF#),
+                     GDouble(Background_Color) / GDouble(16#FF#),
+                     GDouble(Background_Color) / GDouble(16#FF#));
+      Paint(Context);
+
+      Draw_Title(Widget, Context);
+
+      if not Size_Requested then
+         Size_Requested := True;
+         Set_Size_Request(Widget,
+                          GInt(Title_Horizontal_Pad * 14.0 +
+                               Get_Name_Column_Width(Widget, Context) +
+                               Get_Value_Column_Width(Widget, Context) +
+                               Get_Units_Column_Width(Widget, Context) +
+                               Get_Set_Data_Element_Column_Width(Widget, Context) +
+                               Get_Requesting_Data_Column_Width(Widget, Context) +
+                               Get_Request_Period_Column_Width(Widget, Context) +
+                               Get_Log_Data_Column_Width(Widget, Context)),
+                          300);
+
       end if;
 
-      if Clicked_Row_Iter /= Null_Iter then
-         Set(Store, Clicked_Row_Iter, Set_Button_ID, Button_Unclicked_Pix);
-         Clicked_Row_Iter := Null_Iter;
-      end if;
+      Set_Source_RGB(Context, 0.0, 0.0, 0.0);
 
-      return False;
-   end Set_Button_Released;
+      for Index in Natural range 0 .. Natural(Widget.Adaptable_Parameters.Length) - 1 loop
+         Move_To(Context, Widget_Horizontal_Start, Widget_Vertical_Start + GDouble(Index) * Widget_Vertical_Pitch);
+         Show_Text(Context, UnStr.To_String(Widget.Adaptable_Parameters.Element(Index).Friendly_Name));
+      end loop;
 
-   ----------------------
-   -- SET_VALUE_EDITED --
-   ----------------------
+      Move_To(Context, Widget_Horizontal_Start, Widget_Vertical_Start + GDouble(Widget.Adaptable_Parameters.Length) * Widget_Vertical_Pitch);
+      Show_Text(Context, GInt'Image(Width) & " x" & GInt'Image(Height));
 
-   procedure Set_Value_Edited(Object : access GObject_Record'class;
-                              Params : GValues) is
-      Path  : String        := Get_String(Nth(Params, 1));
-      Value : GValue        := Nth(Params, 2);
-      Iter  : Gtk_Tree_Iter := Get_Iter_From_String(Store, Path);
+      return True;
+   end Draw;
+
+   ----------------
+   -- INITIALIZE --
+   ----------------
+
+   procedure Initialize (Widget : access Control_Panel_Widget_Record'Class) is
    begin
+      Gtk.Drawing_Area.Initialize(Widget);
+      Glib.Object.Initialize_Class_Record(Widget, Signals, Class_Record, "ControlPanelWidget");
+      Set_Events(Widget, Exposure_Mask or Button_Release_Mask or Button_Press_Mask);
 
-      -- Make sure this value is convertable to an unsigned_32 --
-      declare
-         New_Value : Unsigned_32 := String_To_Unsigned_32(Get_String(Value));
-      begin
-         -- Update value in model --
-         Set_Value(Store, Iter, Set_Value_ID, Value);
-      end;
-   exception
-      when Others =>
-         Null;
-   end Set_Value_Edited;
-   
-   ---------------------------
-   -- REQUEST_PERIOD_EDITED --
-   ---------------------------
+      Return_Boolean_Callback.Connect(Widget, "expose_event", Return_Boolean_Callback.To_Marshaller(Draw'Access), True);
 
-   procedure Request_Period_Edited(Object : access GObject_Record'class;
-                                   Params : GValues) is
-      Path  : String        := Get_String(Nth(Params, 1));
-      Value : GValue        := Nth(Params, 2);
-      Iter  : Gtk_Tree_Iter := Get_Iter_From_String(Store, Path);
-   begin
-
-      declare
-         New_Value : Duration := String_To_Duration(Get_String(Value));
-      begin
-         Set_Value(Store, Iter, Data_Request_Period_ID, Value);
-         if On_Request_Period_Updated /= Null then
-            On_Request_Period_Updated(Natural'Value(Path), New_Value);
-         end if;
-      end;
-   exception
-      when Others =>
-         Null;
-   end Request_Period_Edited;
+      Size_Callback.Connect(Widget, "size_request", Requisition_Marshaller.To_Marshaller(Size_Request'Access));
+      Return_Boolean_Callback.Connect(Widget, "button_release_event", Return_Boolean_Callback.To_Marshaller(On_Click'Access));
+      Allocation_Callback.Connect(Widget, "size_allocate", Allocation_Marshaller.To_Marshaller(Size_Allocate'Access));
+   end;
 
    ----------------------
    -- UPDATE_UID_VALUE --
@@ -506,29 +502,8 @@ package body Control_Panel is
                                Value : Unsigned_32) is
       Index_Vector : Natural_Vectors.Vector;
    begin
-      if UID_To_AP_Index_Map.Contains(UID) then
-         Index_Vector := UID_To_AP_Index_Map.Element(UID);
-         for Index in Natural range 0 .. Natural(Index_Vector.Length) - 1 loop
-            declare
-               Iter : Gtk_Tree_Iter := Get_Iter_From_String(Store, Natural'Image(Index));
-            begin
-               if Iter /= Null_Iter then
-                  case Adaptable_Parameters.Element(Index).Display_As is
-                     when IEEE754 =>
-                        -- TODO --
-                        null;
-                     when Signed =>
-                        -- TODO --
-                        Null;
-                     when Unsigned =>
-                        Set(Store, Iter, Value_ID, Unsigned_32'Image(Value));
-                     when Hex =>
-                        Set(Store, Iter, Value_ID, To_Hex(Value));
-                  end case;
-               end if;
-            end;
-         end loop;
-      end if;
+      -- TODO --
+      Null;
    end Update_UID_Value;
 
    -------------
@@ -536,39 +511,9 @@ package body Control_Panel is
    -------------
 
    procedure Disable is
-      use Adaptable_Parameter_Record_Vectors;
-      Iter : Gtk_Tree_Iter := Null_Iter;
    begin
-      for Index in Natural range 0 .. Natural(Length(Adaptable_Parameters)) - 1 loop
-         Iter := Get_Iter_From_String(Store, Natural'image(Index));
-
-         if Adaptable_Parameters.Element(Index).Is_Readable then
-            -- Readable --
-            Set(Store.all'access, Iter, Value_ID,                           "-");
-            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID,           True);
-            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, False);
-            Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, True);
-            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          False);
-         else
-            -- Not Readable --
-            Set(Store.all'access, Iter, Is_Requesting_Data_ID,              False);
-            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, False);
-            Set(Store.all'access, Iter, Data_Request_Period_ID,             "");
-            Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, False);
-            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          False);
-         end if;
-
-         if Adaptable_Parameters.Element(Index).Is_Writable then
-            -- Writable --
-            Set(Store.all'access, Iter, Set_Button_ID,            Button_Disabled_Pix);
-            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, True);
-         else
-            -- Not Writable --
-            Set(Store.all'access, Iter, Set_Value_ID,             "");
-            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, False);
-         end if;
-      end loop;
       Panel_Enabled := False;
+      -- TODO --
    end Disable;
 
    ------------
@@ -576,39 +521,9 @@ package body Control_Panel is
    ------------
 
    procedure Enable is
-      use Adaptable_Parameter_Record_Vectors;
-      Iter : Gtk_Tree_Iter := Null_Iter;
    begin
-      for Index in Natural range 0 .. Natural(Length(Adaptable_Parameters)) - 1 loop
-         Iter := Get_Iter_From_String(Store, Natural'image(Index));
-
-         if Adaptable_Parameters.Element(Index).Is_Readable then
-            -- Readable --
-            Set(Store.all'access, Iter, Value_ID,                           "-");
-            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID,           True);
-            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, True);
-            Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, True);
-            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          True);
-         else
-            -- Not Readable --
-            Set(Store.all'access, Iter, Is_Requesting_Data_ID,              False);
-            Set(Store.all'access, Iter, Is_Requesting_Data_Is_Checkable_ID, True);
-            Set(Store.all'access, Iter, Data_Request_Period_ID,             "");
-            Set(Store.all'access, Iter, Data_Request_Period_Is_Editable_ID, True);
-            Set(Store.all'access, Iter, Is_Logged_Is_Checkable_ID,          True);
-         end if;
-
-         if Adaptable_Parameters.Element(Index).Is_Writable then
-            -- Writable --
-            Set(Store.all'access, Iter, Set_Button_ID,            Button_Unclicked_Pix);
-            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, True);
-         else
-            -- Not Writable --
-            Set(Store.all'access, Iter, Set_Value_ID,             "");
-            Set(Store.all'access, Iter, Set_Value_Is_Editable_ID, False);
-         end if;
-      end loop;
       Panel_Enabled := True;
+      -- TODO --
    end Enable;
 
 end Control_Panel;

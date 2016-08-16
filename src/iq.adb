@@ -26,7 +26,7 @@
 with Device;
 with Ada.Text_IO;           use Ada.Text_IO;
 with Configuration;         use Configuration;
-with Control_Panel;
+with Control_Panel;         use Control_Panel;
 with Configuration_Panel;
 with Interfaces;            use Interfaces;
 with Gdk.Event;             use Gdk.Event;
@@ -59,6 +59,7 @@ function Iq return Integer is
    Main_Window_VPane         : Gtk_VPaned;
    Main_Panel_HPane          : Gtk_HPaned;
    Right_Side_Box            : Gtk_VBox;
+   Control_Panel             : Control_Panel_Widget;
 
    Main_Window_Height        : GInt;
    System_Messages_Area_Size : GInt;
@@ -130,16 +131,16 @@ begin
    Gtk_New_HPaned(Main_Panel_HPane);
    Gtk_New_VBox(Main_Window_Box);
    Gtk_New_VBox(Right_Side_Box);
+   Gtk_New(Control_Panel);
 
    Main_Window.Set_Default_Size(400, 400);
 
-   Control_Panel.Create(Main_Window);
    Status_Bar_Panel.Create;
    Raw_Data_Panel.Create;
    Configuration_Panel.Create;
    System_Messages_Panel.Create;
 
-   Add1(Main_Panel_HPane, Control_Panel.View);
+   Add1(Main_Panel_HPane, Control_Panel);
    Add2(Main_Panel_HPane, Right_Side_Box);
 
    Pack_Start(Right_Side_Box, Configuration_Panel.Box, False, False);

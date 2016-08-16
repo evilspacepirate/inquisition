@@ -282,7 +282,8 @@ package body Nexus is
          System_Messages_Panel.Append_Message("No configuration file found in current directory.");
       end if;
 
-      Control_Panel.Set_Adaptable_Parameters(Adaptable_Parameters);
+      -- Control_Panel.Set_Adaptable_Parameters(Adaptable_Parameters);
+      -- TODO --
       Status_Bar_Panel.Set_Configuration_Text("Data Link :  " & Datalink_Configuration_To_String(Datalink));
       Status_Bar_Panel.Set_Protocol_Text(Protocol_Configuration_To_String(Protocol));
       Configuration_Panel.Set_Connect_Button_Enabled(True);
@@ -298,11 +299,6 @@ package body Nexus is
 
       Configuration_Panel.Assign_Event_Callbacks(Connect_Clicked    => Connect_Event'access,
                                                  Disconnect_Clicked => Disconnect_Event'access);
-      Control_Panel.Assign_Event_Callbacks(Log_Data_Updated         => Log_Data_Update_Event'access,
-                                           Requesting_Data_Updated  => Requesting_Data_Update_Event'access,
-                                           Set_Value_Clicked        => Set_Value_Click_Event'access,
-                                           Parameter_Double_Clicked => Double_Click_On_Parameter_Event'access,
-                                           Request_Period_Updated   => Request_Period_Update_Event'access);
    end Initialize;
 
    --------------
@@ -346,7 +342,8 @@ package body Nexus is
          end;
       end if;
 
-      Control_Panel.Enable;
+      -- Control_Panel.Enable;
+      -- TODO --
 
       if Device.Connected = True then
          Configuration_Panel.Set_Connect_Button_Enabled(False);
@@ -387,7 +384,8 @@ package body Nexus is
          System_Messages_Panel.Append_Message("Disconnected: " & Datalink_Configuration_To_String(Datalink) & CRLF);
       end if;
 
-      Control_Panel.Disable;
+      -- Control_Panel.Disable;
+      -- TODO --
 
       -- Terminate all data requestor tasks --
       loop
