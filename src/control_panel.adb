@@ -33,6 +33,7 @@ with GDK.Drawable;          use GDK.Drawable;
 with GDK.Event;             use GDK.Event;
 with GDK.GC;                use GDK.GC;
 with GDK.Window;            use GDK.Window;
+with GDK.PixBuf;            use GDK.PixBuf;
 with GLib;                  use GLib;
 with GLib.Object;           use GLib.Object;
 with GTK;                   use GTK;
@@ -51,6 +52,10 @@ with Util;                  use Util;
 
 package body Control_Panel is
 
+   type Button_State is (Pushed, Not_Pushed);
+   type Checkbox_State is (Checked, Not_Checked);
+   type Widget_type is (Set_Button, Requesting_Data_Checkbox, Logging_Data_Checkbox);
+
    package Internal_Callback is new Handlers.Callback (Control_Panel_Widget_Record);
    package Return_Boolean_Callback is new Handlers.Return_Callback (Control_Panel_Widget_Record, Boolean);
    package Size_Callback is new Handlers.Callback (Control_Panel_Widget_Record);
@@ -58,14 +63,11 @@ package body Control_Panel is
    package Allocation_Callback is new Handlers.Callback (Control_Panel_Widget_Record);
    package Allocation_Marshaller is new Allocation_Callback.Marshallers.Generic_Marshaller (Gtk_Allocation_Access, Gtk.Widget.Get_Allocation);
 
-   Signals      : Chars_Ptr_Array := Null_Array;
-   Class_Record : GObject_Class   := Uninitialized_Class;
-
    Button_Width                 : constant :=     75;
    Button_Height                : constant :=     25;
    Widget_Vertical_Start        : constant :=   41.0;
    Widget_Horizontal_Start      : constant :=    5.0;
-   Widget_Vertical_Pitch        : constant :=   25.0;
+   Widget_Vertical_Pitch        : constant :=   30.0;
    Border_Width                 : constant := 8000.0;
    Border_Top_Line_Y            : constant :=    1.0;
    Border_Bottom_Line_Y         : constant :=   23.0;
@@ -84,6 +86,13 @@ package body Control_Panel is
    Request_Period_Column_Text   : constant String := "Request Period";
    Log_Data_Column_Text         : constant String := "Log Data";
 
+   Signals                      : Chars_Ptr_Array := Null_Array;
+   Class_Record                 : GObject_Class   := Uninitialized_Class;
+
+   Button_Clicked_Pix           : Gdk_PixBuf;
+   Button_UnClicked_Pix         : Gdk_PixBuf;
+   Button_Disabled_Pix          : Gdk_PixBuf;
+
    Panel_Enabled                : Boolean := False;
 
    UID_To_AP_Index_Map          : Name_Index_Maps.Map;
@@ -97,6 +106,15 @@ package body Control_Panel is
    begin
       Widget := new Control_Panel_Widget_Record;
       Control_Panel.Initialize(Widget);
+
+      -- Create Button Images --
+      Button_Clicked_Pix   := Gdk_New_From_XPM_Data(Button_Clicked_XPM);
+      Button_UnClicked_Pix := Gdk_New_From_XPM_Data(Button_Unclicked_XPM);
+      Button_Disabled_Pix  := Gdk_New_From_XPM_Data(Button_Disabled_XPM);
+      Button_Clicked_Pix   := Scale_Simple(Button_Clicked_Pix, Button_Width, Button_Height);
+      Button_UnClicked_Pix := Scale_Simple(Button_Unclicked_Pix, Button_Width, Button_Height);
+      Button_Disabled_Pix  := Scale_Simple(Button_Disabled_Pix, Button_Width, Button_Height);
+
    end GTK_New;
 
    ------------------
@@ -464,10 +482,9 @@ package body Control_Panel is
 
       end if;
 
-      Set_Source_RGB(Context, 0.0, 0.0, 0.0);
-
       for Index in Natural range 0 .. Natural(Widget.Adaptable_Parameters.Length) - 1 loop
          -- Draw adaptable parameter friendly names column --
+         Set_Source_RGB(Context, 0.0, 0.0, 0.0);
          Move_To(Context,
                  Widget_Horizontal_Start,
                  Widget_Vertical_Start + GDouble(Index) * Widget_Vertical_Pitch);
@@ -489,6 +506,19 @@ package body Control_Panel is
                  Title_Horizontal_Pad * 4.0,
                  Widget_Vertical_Start + GDouble(Index) * Widget_Vertical_Pitch);
          Show_Text(Context, UnStr.To_String(Widget.Adaptable_Parameters.Element(Index).Units_Name));
+
+         -- Draw set button column --
+         if Widget.Adaptable_Parameters.Element(Index).Is_Writable then
+            -- Draw set button --
+            Set_Source_Pixbuf(Context,
+                              Button_Disabled_Pix,
+                              Get_Name_Column_Width(Widget, Context) +
+                              Get_Value_Column_Width(Widget, Context) +
+                              Get_Units_Column_Width(Widget, Context) +
+                              Title_Horizontal_Pad * 6.0,
+                              Widget_Vertical_Start + GDouble(Index) * Widget_Vertical_Pitch);
+            Paint(Context);
+         end if;
       end loop;
 
       Move_To(Context, Widget_Horizontal_Start, Widget_Vertical_Start + GDouble(Widget.Adaptable_Parameters.Length) * Widget_Vertical_Pitch);
