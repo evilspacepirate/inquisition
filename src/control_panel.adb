@@ -287,6 +287,40 @@ package body Control_Panel is
       Gtk.Handlers.Emit_Stop_By_Name (Widget, "size_request");
    end Size_Request;
 
+   ------------------------
+   -- SET_BUTTON_CLICKED --
+   ------------------------
+
+   procedure Set_Button_Clicked(Widget       : access Control_Panel_Widget_Record'Class;
+                                X            : in  GDouble;
+                                Y            : in  GDouble;
+                                Clicked      : out Boolean;
+                                Button_Index : out Natural) is
+   begin
+      Clicked := False;
+      for Index in Natural range 0 .. Natural(Widget.Adaptable_Parameters.Length) - 1 loop
+         if Widget.Adaptable_Parameters.Element(Index).Is_Writable then
+            declare
+               Button_X : GDouble := Widget.Friendly_Name_Column_Width +
+                                     Widget.Value_Column_Width +
+                                     Widget.Units_Column_Width +
+                                     Title_Horizontal_Pad * 6.0;
+               Button_Y : GDouble := Widget_Vertical_Start + GDouble(Index) * Widget_Vertical_Pitch;
+            begin
+               if X >= Button_X and
+                  X <= Button_X + GDouble(Button_Width) and
+                  Y >= Button_Y and
+                  Y <= Button_Y + GDouble(Button_Height)
+               then
+                  Clicked      := True;
+                  Button_Index := Index;
+                  return;
+               end if;
+            end;
+         end if;
+      end loop;
+   end Set_Button_Clicked;
+
    ------------------------------
    -- SET_ADAPTABLE_PARAMETERS --
    ------------------------------
@@ -324,14 +358,18 @@ package body Control_Panel is
    function On_Click (Widget : access Control_Panel_Widget_Record'Class;
                       Event  : in Gdk_Event) return Boolean
    is
-      X      : GInt;
-      Y      : GInt;
-      Width  : GInt;
-      Height : GInt;
+      X       : GDouble;
+      Y       : GDouble;
+      Width   : GInt;
+      Height  : GInt;
+      Clicked : Boolean := False;
+      Index   : Natural;
    begin
       Gdk.Drawable.Get_Size (Get_Window (Widget), Width, Height);
-      X := GInt(Get_X (Event));
-      Y := GInt(Get_Y (Event));
+      X := GDouble(Get_X (Event));
+      Y := GDouble(Get_Y (Event));
+      Set_Button_Clicked(Widget, X, Y, Clicked, Index);
+      -- TODO --
       return True;
    end On_Click;
 
@@ -455,6 +493,7 @@ package body Control_Panel is
       Height   : GInt;
       Depth    : GInt;
    begin
+
       Get_Geometry(Window, X, Y, Width, Height, Depth);
       Drawable := GDK.Drawable.GDK_Drawable(Window);
       Context  := Create(Drawable);
@@ -523,6 +562,17 @@ package body Control_Panel is
 
       Move_To(Context, Widget_Horizontal_Start, Widget_Vertical_Start + GDouble(Widget.Adaptable_Parameters.Length) * Widget_Vertical_Pitch);
       Show_Text(Context, GInt'Image(Width) & " x" & GInt'Image(Height));
+
+      -- Capture all of the widths while we're holding --
+      -- the graphing context.                         --
+
+      Widget.Friendly_Name_Column_Width    := Get_Name_Column_Width(Widget, Context);
+      Widget.Value_Column_Width            := Get_Value_Column_Width(Widget, Context);
+      Widget.Units_Column_Width            := Get_Units_Column_Width(Widget, Context);
+      Widget.Set_Data_Element_Column_Width := Get_Set_Data_Element_Column_Width(Widget, Context);
+      Widget.Request_Column_Width          := Get_Requesting_Data_Column_Width(Widget, Context);
+      Widget.Request_Period_Column_Width   := Get_Request_Period_Column_Width(Widget, Context);
+      Widget.Log_Column_Width              := Get_Log_Data_Column_Width(Widget, Context);
 
       return True;
    end Draw;

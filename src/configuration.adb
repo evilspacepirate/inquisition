@@ -329,8 +329,8 @@ package body Configuration is
    -- STRING_TO_READ_WRITE_MODE --
    -------------------------------
 
-   procedure String_To_Read_Write_Mode (Text : in  String; 
-                                        Read : out Boolean;
+   procedure String_To_Read_Write_Mode (Text  : in  String;
+                                        Read  : out Boolean;
                                         Write : out Boolean) is
    begin
       case Text'Length is

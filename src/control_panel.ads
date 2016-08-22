@@ -20,6 +20,7 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
+with Cairo;                 use Cairo;
 with Configuration;         use Configuration;
 with GLib;                  use GLib;
 with GLib.Object;           use GLib.Object;
@@ -46,9 +47,16 @@ package Control_Panel is
 
    type Control_Panel_Widget_Record is new Gtk.Drawing_Area.Gtk_Drawing_Area_Record with
    record
-      Adaptable_Parameters : Adaptable_Parameter_Record_Vectors.Vector;
-      Values               : String_Vectors.Vector;
-      Set_Values           : String_Vectors.Vector;
+      Adaptable_Parameters          : Adaptable_Parameter_Record_Vectors.Vector;
+      Values                        : String_Vectors.Vector;
+      Set_Values                    : String_Vectors.Vector;
+      Friendly_Name_Column_Width    : GDouble;
+      Value_Column_Width            : GDouble;
+      Units_Column_Width            : GDouble;
+      Set_Data_Element_Column_Width : GDouble;
+      Request_Column_Width          : GDouble;
+      Request_Period_Column_Width   : GDouble;
+      Log_Column_Width              : GDouble;
    end record;
 
 end Control_Panel;
