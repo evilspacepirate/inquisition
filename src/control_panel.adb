@@ -20,40 +20,39 @@
 -- OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF      --
 -- THIS SOFTWARE.                                              --
 -----------------------------------------------------------------
-with Ada.Text_IO;           use Ada.Text_IO;
-with Cairo;                 use Cairo;
-with Cairo.Image_Surface;   use Cairo.Image_Surface;
-with Cairo.Font_Options;    use Cairo.Font_Options;
-with Configuration;         use Configuration;
-with Control_Panel.Buttons; use Control_Panel.Buttons;
-with GDK;                   use GDK;
-with GDK.Cairo;             use GDK.Cairo;
-with GDK.Color;             use GDK.Color;
-with GDK.Drawable;          use GDK.Drawable;
-with GDK.Event;             use GDK.Event;
-with GDK.GC;                use GDK.GC;
-with GDK.Window;            use GDK.Window;
-with GDK.PixBuf;            use GDK.PixBuf;
-with GLib;                  use GLib;
-with GLib.Object;           use GLib.Object;
-with GTK;                   use GTK;
-with GTK.Drawing_Area;      use GTK.Drawing_Area;
-with GTK.Widget;            use GTK.Widget;
-with GTK.Handlers;          use GTK.Handlers;
-with GTKAda.Types;          use GTKAda.Types;
-with Interfaces;            use Interfaces;
+with Ada.Text_IO;                       use Ada.Text_IO;
+with Ada.Containers.Indefinite_Vectors; use Ada.Containers;
+with Cairo;                             use Cairo;
+with Cairo.Image_Surface;               use Cairo.Image_Surface;
+with Cairo.Font_Options;                use Cairo.Font_Options;
+with Configuration;                     use Configuration;
+with Control_Panel.Buttons;             use Control_Panel.Buttons;
+with GDK;                               use GDK;
+with GDK.Cairo;                         use GDK.Cairo;
+with GDK.Color;                         use GDK.Color;
+with GDK.Drawable;                      use GDK.Drawable;
+with GDK.Event;                         use GDK.Event;
+with GDK.GC;                            use GDK.GC;
+with GDK.Window;                        use GDK.Window;
+with GDK.PixBuf;                        use GDK.PixBuf;
+with GLib;                              use GLib;
+with GLib.Object;                       use GLib.Object;
+with GTK;                               use GTK;
+with GTK.Drawing_Area;                  use GTK.Drawing_Area;
+with GTK.Widget;                        use GTK.Widget;
+with GTK.Handlers;                      use GTK.Handlers;
+with GTKAda.Types;                      use GTKAda.Types;
+with Interfaces;                        use Interfaces;
 with Interfaces.C.Strings;
-with Pango.Cairo;           use Pango.Cairo;
-with Pango.Context;         use Pango.Context;
-with Pango.Font;            use Pango.Font;
-with Pango.Layout;          use Pango.Layout;
-with Primatives;            use Primatives;
-with Util;                  use Util;
+with Pango.Cairo;                       use Pango.Cairo;
+with Pango.Context;                     use Pango.Context;
+with Pango.Font;                        use Pango.Font;
+with Pango.Layout;                      use Pango.Layout;
+with Primatives;                        use Primatives;
+with Util;                              use Util;
 
 package body Control_Panel is
 
-   type Button_State is (Pushed, Not_Pushed);
-   type Checkbox_State is (Checked, Not_Checked);
    type Widget_type is (Set_Button, Requesting_Data_Checkbox, Logging_Data_Checkbox);
 
    package Internal_Callback is new Handlers.Callback (Control_Panel_Widget_Record);
@@ -89,11 +88,10 @@ package body Control_Panel is
    Signals                      : Chars_Ptr_Array := Null_Array;
    Class_Record                 : GObject_Class   := Uninitialized_Class;
 
-   Button_Clicked_Pix           : Gdk_PixBuf;
-   Button_UnClicked_Pix         : Gdk_PixBuf;
-   Button_Disabled_Pix          : Gdk_PixBuf;
-
-   Panel_Enabled                : Boolean := False;
+   Button_Clicked_Pix           : GDK_PixBuf;
+   Button_UnClicked_Pix         : GDK_PixBuf;
+   Button_Disabled_Pix          : GDK_PixBuf;
+   Clicked_Button_Index         : Natural;
 
    UID_To_AP_Index_Map          : Name_Index_Maps.Map;
    Size_Requested               : Boolean := False;
@@ -114,7 +112,7 @@ package body Control_Panel is
       Button_Clicked_Pix   := Scale_Simple(Button_Clicked_Pix, Button_Width, Button_Height);
       Button_UnClicked_Pix := Scale_Simple(Button_Unclicked_Pix, Button_Width, Button_Height);
       Button_Disabled_Pix  := Scale_Simple(Button_Disabled_Pix, Button_Width, Button_Height);
-
+      Widget.Enabled       := False;
    end GTK_New;
 
    ------------------
@@ -287,15 +285,15 @@ package body Control_Panel is
       Gtk.Handlers.Emit_Stop_By_Name (Widget, "size_request");
    end Size_Request;
 
-   ------------------------
-   -- SET_BUTTON_CLICKED --
-   ------------------------
+   ----------------------------
+   -- GET_SET_BUTTON_CLICKED --
+   ----------------------------
 
-   procedure Set_Button_Clicked(Widget       : access Control_Panel_Widget_Record'Class;
-                                X            : in  GDouble;
-                                Y            : in  GDouble;
-                                Clicked      : out Boolean;
-                                Button_Index : out Natural) is
+   procedure Get_Set_Button_Clicked(Widget       : access Control_Panel_Widget_Record'Class;
+                                    X            : in  GDouble;
+                                    Y            : in  GDouble;
+                                    Clicked      : out Boolean;
+                                    Button_Index : out Natural) is
    begin
       Clicked := False;
       for Index in Natural range 0 .. Natural(Widget.Adaptable_Parameters.Length) - 1 loop
@@ -319,7 +317,7 @@ package body Control_Panel is
             end;
          end if;
       end loop;
-   end Set_Button_Clicked;
+   end Get_Set_Button_Clicked;
 
    ------------------------------
    -- SET_ADAPTABLE_PARAMETERS --
@@ -347,31 +345,51 @@ package body Control_Panel is
             when Hex =>
                Widget.Set_Values.Append(UnStr.To_Unbounded_String(To_Hex(Widget.Adaptable_Parameters.Element(Index).Default_Set_Value)));
          end case;
+         Widget.Set_Button_State.Append(Not_Pressed);
       end loop;
-      -- TODO Redraw widget --
    end Set_Adaptable_Parameters;
 
-   --------------
-   -- ON_CLICK --
-   --------------
+   -----------------------------
+   -- ON_WIDGET_CLICK_RELEASE --
+   -----------------------------
 
-   function On_Click (Widget : access Control_Panel_Widget_Record'Class;
-                      Event  : in Gdk_Event) return Boolean
-   is
-      X       : GDouble;
-      Y       : GDouble;
-      Width   : GInt;
-      Height  : GInt;
-      Clicked : Boolean := False;
-      Index   : Natural;
+   function On_Widget_Click_Release (Widget : access Control_Panel_Widget_Record'Class;
+                                     Event  : in Gdk_Event) return Boolean is
+   begin
+      Widget.Set_Button_State.Replace_Element(Clicked_Button_Index, Not_Pressed);
+      Widget.Queue_Draw;
+      return True;
+   end On_Widget_Click_Release;
+
+   ---------------------
+   -- ON_WIDGET_CLICK --
+   ---------------------
+
+   function On_Widget_Click (Widget : access Control_Panel_Widget_Record'Class;
+                             Event  : in Gdk_Event) return Boolean is
+      X      : GDouble;
+      Y      : GDouble;
+      Width  : GInt;
+      Height : GInt;
+      Index  : Natural;
    begin
       Gdk.Drawable.Get_Size (Get_Window (Widget), Width, Height);
       X := GDouble(Get_X (Event));
       Y := GDouble(Get_Y (Event));
-      Set_Button_Clicked(Widget, X, Y, Clicked, Index);
-      -- TODO --
+
+      declare
+         Clicked : Boolean;
+      begin
+         Get_Set_Button_Clicked(Widget, X, Y, Clicked, Index);
+         Clicked_Button_Index := Index;
+         if Clicked then
+            Widget.Set_Button_State.Replace_Element(Index, Pressed);
+            Widget.Queue_Draw;
+         end if;
+      end;
+new_line;
       return True;
-   end On_Click;
+   end On_Widget_Click;
 
    -------------------
    -- SIZE_ALLOCATE --
@@ -493,7 +511,6 @@ package body Control_Panel is
       Height   : GInt;
       Depth    : GInt;
    begin
-
       Get_Geometry(Window, X, Y, Width, Height, Depth);
       Drawable := GDK.Drawable.GDK_Drawable(Window);
       Context  := Create(Drawable);
@@ -518,7 +535,6 @@ package body Control_Panel is
                                Get_Request_Period_Column_Width(Widget, Context) +
                                Get_Log_Data_Column_Width(Widget, Context)),
                           300);
-
       end if;
 
       for Index in Natural range 0 .. Natural(Widget.Adaptable_Parameters.Length) - 1 loop
@@ -549,14 +565,30 @@ package body Control_Panel is
          -- Draw set button column --
          if Widget.Adaptable_Parameters.Element(Index).Is_Writable then
             -- Draw set button --
-            Set_Source_Pixbuf(Context,
-                              Button_Disabled_Pix,
-                              Get_Name_Column_Width(Widget, Context) +
-                              Get_Value_Column_Width(Widget, Context) +
-                              Get_Units_Column_Width(Widget, Context) +
-                              Title_Horizontal_Pad * 6.0,
-                              Widget_Vertical_Start + GDouble(Index) * Widget_Vertical_Pitch);
-            Paint(Context);
+            declare
+               Button_PixBuf : GDK_PixBuf;
+            begin
+
+               if Widget.Enabled then
+                  case Widget.Set_Button_State.Element(Index) is
+                     when Pressed =>
+                        Button_PixBuf := Button_Clicked_Pix;
+                     when Not_Pressed =>
+                        Button_PixBuf := Button_UnClicked_Pix;
+                  end case;
+               else
+                   Button_PixBuf := Button_Disabled_Pix;
+               end if;
+
+               Set_Source_Pixbuf(Context,
+                                 Button_Pixbuf,
+                                 Get_Name_Column_Width(Widget, Context) +
+                                 Get_Value_Column_Width(Widget, Context) +
+                                 Get_Units_Column_Width(Widget, Context) +
+                                 Title_Horizontal_Pad * 6.0,
+                                 Widget_Vertical_Start + GDouble(Index) * Widget_Vertical_Pitch);
+               Paint(Context);
+            end;
          end if;
       end loop;
 
@@ -590,7 +622,8 @@ package body Control_Panel is
       Return_Boolean_Callback.Connect(Widget, "expose_event", Return_Boolean_Callback.To_Marshaller(Draw'Access), True);
 
       Size_Callback.Connect(Widget, "size_request", Requisition_Marshaller.To_Marshaller(Size_Request'Access));
-      Return_Boolean_Callback.Connect(Widget, "button_release_event", Return_Boolean_Callback.To_Marshaller(On_Click'Access));
+      Return_Boolean_Callback.Connect(Widget, "button_press_event", Return_Boolean_Callback.To_Marshaller(On_Widget_Click'Access));
+      Return_Boolean_Callback.Connect(Widget, "button_release_event", Return_Boolean_Callback.To_Marshaller(On_Widget_Click_Release'Access));
       Allocation_Callback.Connect(Widget, "size_allocate", Allocation_Marshaller.To_Marshaller(Size_Allocate'Access));
    end;
 
@@ -610,20 +643,20 @@ package body Control_Panel is
    -- DISABLE --
    -------------
 
-   procedure Disable is
+   procedure Disable (Widget : access Control_Panel_Widget_Record) is
    begin
-      Panel_Enabled := False;
-      -- TODO --
+      Widget.Enabled := False;
+      Widget.Queue_Draw;
    end Disable;
 
    ------------
    -- ENABLE --
    ------------
 
-   procedure Enable is
+   procedure Enable  (Widget : access Control_Panel_Widget_Record) is
    begin
-      Panel_Enabled := True;
-      -- TODO --
+      Widget.Enabled := True;
+      Widget.Queue_Draw;
    end Enable;
 
 end Control_Panel;
